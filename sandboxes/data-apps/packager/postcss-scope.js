@@ -4,8 +4,27 @@
  * `body`) and the `.dark` token block move onto the scope element itself;
  * everything else only matches inside it. `:where()` keeps specificity as-is.
  */
-const PAGE_ROOT = /^(?::root|html|body)(?![\w-])/;
-const DARK_ROOT = /^\.dark(?![\w-])/;
+// A backslash continues the name: `.dark\:border-destructive` is Tailwind's
+// `dark:border-destructive` class, not the `.dark` token block.
+const PAGE_ROOT = /^(?::root|html|body)(?![\w\\-])/;
+const PAGE_ROOT_COMBINATOR = /^\s*>?\s*(?=(?::root|html|body)(?![\w\\-]))/;
+const DARK_ROOT = /^\.dark(?![\w\\-])/;
+
+/** Strips a leading `:root`/`html`/`body` chain (`html body`, `html > body`); null if none. */
+function stripPageRoots(selector) {
+    let rest = selector;
+    let matched = false;
+    for (;;) {
+        const root = rest.match(PAGE_ROOT);
+        if (root === null) break;
+        matched = true;
+        rest = rest.slice(root[0].length);
+        const combinator = rest.match(PAGE_ROOT_COMBINATOR);
+        if (combinator === null || combinator[0] === '') break;
+        rest = rest.slice(combinator[0].length);
+    }
+    return matched ? rest : null;
+}
 
 /** Split a selector list on top-level commas, skipping escapes, `()` and `[]`. */
 function splitSelectorList(selectorList) {
@@ -31,10 +50,15 @@ function splitSelectorList(selectorList) {
 
 export function scopeSelector(selector, scope) {
     const where = `:where(${scope})`;
-    if (selector.startsWith(where)) return selector;
-    const pageRoot = selector.match(PAGE_ROOT);
-    if (pageRoot) return `${where}${selector.slice(pageRoot[0].length)}`;
-    if (DARK_ROOT.test(selector)) return `${where}${selector}`;
+    if (selector.includes(where)) return selector;
+    const afterPageRoots = stripPageRoots(selector);
+    if (afterPageRoots !== null) return `${where}${afterPageRoots}`;
+    if (DARK_ROOT.test(selector)) {
+        // Dark from the scope element, or from an ancestor such as <html>,
+        // where template apps are told to put it and host pages often do.
+        const rest = selector.slice('.dark'.length);
+        return `${where}.dark${rest}, :where(.dark) ${where}${rest}`;
+    }
     return `${where} ${selector}`;
 }
 

@@ -39,7 +39,8 @@ The shadcn CLI runs outside `sfw` because its registry fetch fails behind the fi
 
 A native import has no iframe, so the build isolates the app instead:
 
-- **CSS.** `postcss-scope.js` scopes every rule to `.ld-app-<name>`. `:root`, `html`, `body` and `.dark` rules move onto the scope element, everything else only matches inside it, and `:where()` keeps specificity unchanged. Tailwind's preflight, the theme tokens and the Radix `!important` rules no longer reach the host page.
+- **CSS.** `postcss-scope.js` scopes every rule to `.ld-app-<name>`. `:root`, `html` and `body` rules move onto the scope element, `.dark` rules apply when the scope element or an ancestor such as `<html>` has `dark`, everything else only matches inside the scope, and `:where()` keeps specificity unchanged. Tailwind's preflight, the theme tokens and the Radix `!important` rules no longer reach the host page.
+- **Import order.** The generated entry keeps the order of the app's `main.jsx`: stylesheets imported before or after `App` decide which theme tokens win.
 - **Portals.** `@radix-ui/react-portal` is aliased to `runtime/radixPortal.js`, and `createPortal(…, document.body)` in app code is rewritten (`vite-scoped-portals.js`), so menus, selects, dialogs and custom floating menus render into a scoped portal root.
 - **Page-level behaviour.** `mount(el, embedOptions)` uses `createEmbedClient`, which puts the SDK in embedded mode: URL state stays in memory, the colour scheme is applied to the app's root instead of `<html>`, and nothing is posted to `window.parent`. The template's global error handler and screenshot handler only run in the viewer.
 

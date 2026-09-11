@@ -183,6 +183,29 @@ function setUpStage(stageDir: string): void {
     writeFileSync(join(stageDir, SETUP_MARKER), new Date().toISOString());
 }
 
+const STYLE_IMPORTS = "import './index.css';\nimport './chart-overrides.css';";
+const APP_IMPORT = "import App from './App';";
+
+/**
+ * The entry replaces main.jsx, so it keeps the app's import order: whether
+ * the template stylesheets load before or after App decides which `:root`
+ * and `.dark` tokens win.
+ */
+function buildEntry(appMainJsx: string): string {
+    const entry = readFileSync(join(PACKAGER_DIR, 'entry.jsx'), 'utf8');
+    const entryImports = `${STYLE_IMPORTS}\n${APP_IMPORT}`;
+    if (!entry.includes(entryImports)) {
+        throw new Error('entry.jsx no longer contains the style and App imports buildEntry reorders');
+    }
+    const appImportAt = appMainJsx.indexOf(APP_IMPORT);
+    const styleImportAt = appMainJsx.indexOf("import './index.css'");
+    const appFirst =
+        appImportAt !== -1 && styleImportAt !== -1 && appImportAt < styleImportAt;
+    return appFirst
+        ? entry.replace(entryImports, `${APP_IMPORT}\n${STYLE_IMPORTS}`)
+        : entry;
+}
+
 function describeFile(path: string): string {
     const bytes = readFileSync(path);
     const kb = (size: number) => `${(size / 1024).toFixed(1)} kB`;
@@ -293,7 +316,10 @@ function packageApp(options: PackagerOptions): void {
     // Reset template-owned sources, then lay the app's src/ over them.
     cpSync(join(TEMPLATE_DIR, 'src'), join(stageDir, 'src'), { recursive: true });
     cpSync(join(options.appDir, 'src'), join(stageDir, 'src'), { recursive: true });
-    cpSync(join(PACKAGER_DIR, 'entry.jsx'), join(stageDir, 'src', ENTRY_FILE));
+    writeFileSync(
+        join(stageDir, 'src', ENTRY_FILE),
+        buildEntry(readFileSync(join(stageDir, 'src', 'main.jsx'), 'utf8')),
+    );
     cpSync(join(PACKAGER_DIR, 'runtime'), join(stageDir, 'src', RUNTIME_DIR), {
         recursive: true,
     });
