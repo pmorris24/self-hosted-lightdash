@@ -9,10 +9,15 @@ import { type OrganizationSettingsModel } from '../../models/OrganizationSetting
 
 const CORS_POLICY_CACHE_TTL_MS = 60_000;
 
+// Browsers reuse a preflight for this long instead of repeating it before each
+// cross-origin call; allowed-domain changes reach browsers within this window.
+export const CORS_PREFLIGHT_MAX_AGE_SECONDS = 600;
+
 type CorsOptions = {
     methods: string;
     allowedHeaders: string;
     credentials: boolean;
+    maxAge: number;
     origin: Array<string | RegExp> | false;
 };
 
@@ -20,6 +25,7 @@ const createCorsOptions = (origin: CorsOptions['origin']): CorsOptions => ({
     methods: 'OPTIONS, GET, HEAD, PUT, PATCH, POST, DELETE',
     allowedHeaders: '*',
     credentials: false,
+    maxAge: CORS_PREFLIGHT_MAX_AGE_SECONDS,
     origin,
 });
 

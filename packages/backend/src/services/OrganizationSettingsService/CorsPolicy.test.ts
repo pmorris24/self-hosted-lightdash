@@ -3,6 +3,7 @@ import { type Request, type Response } from 'express';
 import { lightdashConfigMock } from '../../config/lightdashConfig.mock';
 import { type OrganizationSettingsModel } from '../../models/OrganizationSettingsModel';
 import {
+    CORS_PREFLIGHT_MAX_AGE_SECONDS,
     createCorsOptionsDelegate,
     invalidateCorsPolicyCache,
 } from './CorsPolicy';
@@ -90,6 +91,20 @@ describe('CorsPolicy', () => {
         });
         expect(headers.get('Access-Control-Allow-Origin')).toBe(
             'https://app.example.com',
+        );
+    });
+
+    test('lets browsers cache preflights from allowed origins', async () => {
+        const { headers } = await getCorsHeaders({
+            origin: 'https://app.example.com',
+            method: 'OPTIONS',
+            dbAllowedDomains: ['https://app.example.com'],
+        });
+        expect(headers.get('Access-Control-Allow-Origin')).toBe(
+            'https://app.example.com',
+        );
+        expect(headers.get('Access-Control-Max-Age')).toBe(
+            String(CORS_PREFLIGHT_MAX_AGE_SECONDS),
         );
     });
 
