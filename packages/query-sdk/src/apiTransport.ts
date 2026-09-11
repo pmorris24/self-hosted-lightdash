@@ -34,12 +34,12 @@ import type {
 } from './types';
 import { VIZ_DRILL_DOWN_PATH, VIZ_UNDERLYING_DATA_PATH } from './types';
 
-// Mirrors the explorer's `useInfiniteQueryResults` polling rhythm so the
-// SDK behaves like a normal Lightdash chart: 500-row pages, exponential
-// backoff starting at 250ms, capped at 1000ms.
+// 500-row pages like the explorer. Polling starts at 100ms, since app queries
+// are often cache hits or short warehouse runs, and backs off to 1000ms.
 const PAGE_SIZE = 500;
-const INITIAL_BACKOFF_MS = 250;
+const INITIAL_BACKOFF_MS = 100;
 const MAX_BACKOFF_MS = 1000;
+const MAX_PARALLEL_PAGE_REQUESTS = 4;
 const MAX_POLL_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_DOWNLOAD_POLL_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 const ALL_RESULTS_LIMIT = Number.MAX_SAFE_INTEGER;
@@ -707,24 +707,36 @@ async function pollQueryRows(
     );
     const apiRows: ResultRow[] = [...firstReadyPage.rows];
 
-    // Drain remaining pages. The backend already streamed results to S3 by
-    // the time the first page is ready, so subsequent pages resolve quickly.
+    // Every page exists once the first is ready (results are already streamed
+    // to storage), so fetch the rest in parallel batches. The batch size uses
+    // the page size the server actually returned; nextPage decides when to stop.
+    const rowsPerPage = firstReadyPage.rows.length;
     let { nextPage } = firstReadyPage;
     const { totalResults } = firstReadyPage;
     while (nextPage !== undefined && apiRows.length < totalResults) {
-        const pageResult = await fetchFn<PollResponse>(
-            'GET',
-            pollUrl(nextPage),
+        const firstPage = nextPage;
+        const pagesLeft =
+            rowsPerPage > 0
+                ? Math.ceil((totalResults - apiRows.length) / rowsPerPage)
+                : 1;
+        const pages = Array.from(
+            { length: Math.min(pagesLeft, MAX_PARALLEL_PAGE_REQUESTS) },
+            (_, index) => firstPage + index,
+        );
+        const pageResults = await Promise.all(
+            pages.map((page) => fetchFn<PollResponse>('GET', pollUrl(page))),
         );
 
-        if (pageResult.status !== 'ready') {
-            throw new Error(
-                `Unexpected status while paginating results: ${pageResult.status}`,
-            );
+        nextPage = undefined;
+        for (const pageResult of pageResults) {
+            if (pageResult.status !== 'ready') {
+                throw new Error(
+                    `Unexpected status while paginating results: ${pageResult.status}`,
+                );
+            }
+            apiRows.push(...pageResult.rows);
+            nextPage = pageResult.nextPage;
         }
-
-        apiRows.push(...pageResult.rows);
-        nextPage = pageResult.nextPage;
     }
 
     return { firstReadyPage, apiRows };
