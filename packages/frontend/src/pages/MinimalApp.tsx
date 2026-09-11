@@ -267,7 +267,7 @@ export default function MinimalApp() {
         (latestReadyVersion !== undefined && isTokenLoading);
     const error = appQuery.error ?? visibleTokenError;
 
-    if (isLoading) {
+    if (isLoading || previewOrigin === null) {
         return (
             <Stack align="center" justify="center" h="100vh">
                 <Loader size="md" />

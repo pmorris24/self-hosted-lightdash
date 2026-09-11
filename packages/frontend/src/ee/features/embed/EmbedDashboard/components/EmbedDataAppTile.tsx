@@ -59,9 +59,10 @@ const EmbedDataAppTile: FC<Props> = ({ tile, projectUuid }) => {
         [dashboardFiltersForApp],
     );
 
-    const previewUrl = tokenQuery.data
-        ? `${previewOrigin}/api/apps/${appUuid}/versions/${tokenQuery.data.version}/t/${tokenQuery.data.token}/?f=${filtersKey}#transport=postMessage&projectUuid=${projectUuid}`
-        : undefined;
+    const previewUrl =
+        tokenQuery.data && previewOrigin !== null
+            ? `${previewOrigin}/api/apps/${appUuid}/versions/${tokenQuery.data.version}/t/${tokenQuery.data.token}/?f=${filtersKey}#transport=postMessage&projectUuid=${projectUuid}`
+            : undefined;
 
     const visibleTokenError = getVisiblePreviewTokenError(
         tokenQuery.error,
@@ -104,7 +105,10 @@ const EmbedDataAppTile: FC<Props> = ({ tile, projectUuid }) => {
                         title="No access"
                         description="This data app isn't authorized for this embed."
                     />
-                ) : tokenQuery.isLoading || !previewUrl || !tokenQuery.data ? (
+                ) : tokenQuery.isLoading ||
+                  !previewUrl ||
+                  !tokenQuery.data ||
+                  previewOrigin === null ? (
                     <Stack align="center" justify="center" h="100%">
                         <Loader size="sm" />
                     </Stack>

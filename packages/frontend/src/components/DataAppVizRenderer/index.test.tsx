@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => ({
         current: undefined as ReturnType<typeof apiError> | undefined,
     },
     token: { current: 'preview-token' as string | undefined },
+    previewOrigin: { current: 'https://preview.example.com' as string | null },
     tokenError: {
         current: undefined as ReturnType<typeof apiError> | undefined,
     },
@@ -103,7 +104,7 @@ vi.mock('../../features/chartTypes/hooks/useDataAppVizRender', () => ({
     },
 }));
 vi.mock('../../features/apps/previewOrigin', () => ({
-    usePreviewOrigin: () => 'https://preview.example.com',
+    usePreviewOrigin: () => mocks.previewOrigin.current,
 }));
 vi.mock('../../hooks/useContextMenuPermissions', () => ({
     useContextMenuPermissions: () => ({
@@ -243,6 +244,7 @@ describe('DataAppVizRenderer', () => {
         mocks.metadata.current = readyMetadata();
         mocks.metadataError.current = undefined;
         mocks.token.current = 'preview-token';
+        mocks.previewOrigin.current = 'https://preview.example.com';
         mocks.tokenError.current = undefined;
         mocks.embedToken.current = undefined;
         mocks.dataAppVizUuid.current = 'viz-uuid';
@@ -272,6 +274,17 @@ describe('DataAppVizRenderer', () => {
 
     it('shows a neutral loading state while render metadata is pending', () => {
         mocks.metadata.current = undefined;
+
+        renderRenderer();
+
+        expect(
+            screen.getByText('Loading custom chart type…'),
+        ).toBeInTheDocument();
+        expect(mocks.iframePreview).not.toHaveBeenCalled();
+    });
+
+    it('waits for the preview origin before rendering the iframe', () => {
+        mocks.previewOrigin.current = null;
 
         renderRenderer();
 
@@ -610,6 +623,7 @@ describe('DataAppVizRenderer screenshot-ready contract', () => {
         mocks.metadata.current = readyMetadata();
         mocks.metadataError.current = undefined;
         mocks.token.current = 'preview-token';
+        mocks.previewOrigin.current = 'https://preview.example.com';
         mocks.tokenError.current = undefined;
         mocks.embedToken.current = undefined;
         mocks.dataAppVizUuid.current = 'viz-uuid';
@@ -800,6 +814,7 @@ describe('DataAppVizRenderer underlying-data gating', () => {
         mocks.metadata.current = readyMetadata();
         mocks.metadataError.current = undefined;
         mocks.token.current = 'preview-token';
+        mocks.previewOrigin.current = 'https://preview.example.com';
         mocks.tokenError.current = undefined;
         mocks.embedToken.current = undefined;
         mocks.dataAppVizUuid.current = 'viz-uuid';

@@ -59,7 +59,7 @@ const ChartTypeSamplePreview: FC<Props> = ({
     );
 
     const previewBaseUrl =
-        readyMetadata && token
+        readyMetadata && token && previewOrigin !== null
             ? `${previewOrigin}/api/apps/${dataAppVizUuid}/versions/${readyMetadata.version}/t/${token}/`
             : undefined;
 
@@ -97,7 +97,7 @@ const ChartTypeSamplePreview: FC<Props> = ({
             <PreviewPlaceholder message="No finished version yet" icon={icon} />
         );
     }
-    if (!token || !previewBaseUrl) {
+    if (!token || !previewBaseUrl || previewOrigin === null) {
         return <PreviewPlaceholder message="Loading preview…" icon={icon} />;
     }
 

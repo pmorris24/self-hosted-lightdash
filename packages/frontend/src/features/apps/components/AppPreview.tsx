@@ -74,12 +74,13 @@ const AppPreview = forwardRef<AppIframePreviewHandle, AppPreviewProps>(
         } = useAppPreviewToken(projectUuid, appUuid, version);
 
         const previewOrigin = usePreviewOrigin();
-        const previewUrl = token
-            ? `${previewOrigin}/api/apps/${appUuid}/versions/${version}/t/${token}/?r=${refreshKey}#transport=postMessage&projectUuid=${projectUuid}`
-            : undefined;
+        const previewUrl =
+            token && previewOrigin !== null
+                ? `${previewOrigin}/api/apps/${appUuid}/versions/${version}/t/${token}/?r=${refreshKey}#transport=postMessage&projectUuid=${projectUuid}`
+                : undefined;
         const visibleError = getVisiblePreviewTokenError(error, !!token);
 
-        if (isLoading) {
+        if (isLoading || previewOrigin === null) {
             return (
                 <Group gap="sm" p="md" justify="center">
                     <Loader size="sm" />

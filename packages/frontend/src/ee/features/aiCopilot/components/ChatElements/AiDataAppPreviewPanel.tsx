@@ -167,7 +167,7 @@ export const AiDataAppPreviewPanel: FC<Props> = ({
         !isForbidden && !isNotFound && (appQuery.error || visibleTokenError);
 
     const previewUrl =
-        token && effectiveVersion !== null
+        token && effectiveVersion !== null && previewOrigin !== null
             ? `${previewOrigin}/api/apps/${appUuid}/versions/${effectiveVersion}/t/${token}/#transport=postMessage&projectUuid=${projectUuid}`
             : undefined;
 
@@ -282,7 +282,7 @@ export const AiDataAppPreviewPanel: FC<Props> = ({
     }
 
     let body: ReactNode;
-    if (isTokenLoading || !previewUrl || !token) {
+    if (isTokenLoading || !previewUrl || !token || previewOrigin === null) {
         body = (
             <Center h="100%">
                 <Loader

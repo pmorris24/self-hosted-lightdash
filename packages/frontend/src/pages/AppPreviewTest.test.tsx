@@ -4,6 +4,8 @@ import type { QueryEvent } from '../features/apps/hooks/useAppSdkBridge';
 import { renderWithProviders } from '../testing/testUtils';
 
 type IframePreviewProps = {
+    src?: string;
+    expectedPreviewOrigin?: string;
     onQueryEvent?: (event: QueryEvent) => void;
 };
 
@@ -19,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     appUuid: 'app-uuid',
     appName: 'Sales app',
     isLoading: false,
+    previewOrigin: 'https://preview.example.com' as string | null,
 }));
 
 vi.mock('react-router', () => ({
@@ -94,7 +97,7 @@ vi.mock('../features/apps/hooks/useAppBuildPoller', () => ({
 }));
 
 vi.mock('../features/apps/previewOrigin', () => ({
-    usePreviewOrigin: () => 'https://preview.example.com',
+    usePreviewOrigin: () => mocks.previewOrigin,
 }));
 
 vi.mock('../hooks/useServerOrClientFeatureFlag', () => ({
@@ -162,6 +165,22 @@ describe('AppPreviewTest', () => {
         mocks.appUuid = 'app-uuid';
         mocks.appName = 'Sales app';
         mocks.isLoading = false;
+        mocks.previewOrigin = 'https://preview.example.com';
+    });
+
+    it('does not render the iframe until the preview origin resolves', () => {
+        mocks.previewOrigin = null;
+        mocks.iframePreview.mockClear();
+        const { rerender } = renderWithProviders(<AppPreviewTest />);
+        expect(mocks.iframePreview).not.toHaveBeenCalled();
+
+        mocks.previewOrigin = 'https://preview.example.com';
+        rerender(<AppPreviewTest />);
+        const props = latestIframeProps();
+        expect(props.expectedPreviewOrigin).toBe('https://preview.example.com');
+        expect(props.src).toMatch(
+            /^https:\/\/preview\.example\.com\/api\/apps\/app-uuid\/versions\//,
+        );
     });
 
     it('sets the tab title when the app loads and updates it when the app changes', () => {

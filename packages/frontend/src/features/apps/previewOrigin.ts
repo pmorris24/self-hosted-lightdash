@@ -7,7 +7,9 @@ const LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY =
     '__lightdash_sdk_instance_url';
 
 /**
- * Origin where data-app preview iframes load. Resolution order:
+ * Origin where data-app preview iframes load, or `null` until the health
+ * query settles — a URL built earlier can hit a host the preview router
+ * rejects. Resolution order once settled:
  *   1. Explicit `dataApps.previewOrigin` from the backend health endpoint
  *      (set in prod when previews are served from a dedicated subdomain).
  *   2. The SDK-stored instance URL — in SDK embeds the page origin is the
@@ -15,9 +17,13 @@ const LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY =
  *      iframe would try to load app assets from the host dev server.
  *   3. The page's own origin — correct for in-app rendering and the
  *      iframe-embed flow (the page is already served by Lightdash).
+ * If health errors, 2 and 3 still apply so previews keep working.
  */
-export const usePreviewOrigin = (): string => {
+export const usePreviewOrigin = (): string | null => {
     const { health } = useApp();
+    if (!health.data && !health.error) {
+        return null;
+    }
     if (health.data?.dataApps.previewOrigin) {
         return health.data.dataApps.previewOrigin;
     }

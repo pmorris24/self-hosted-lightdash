@@ -189,9 +189,10 @@ export default function AppPreviewTest() {
         );
     }
 
-    const previewUrl = token
-        ? `${previewOrigin}/api/apps/${appUuid}/versions/${version}/t/${token}/?r=${refreshKey}#transport=postMessage&projectUuid=${projectUuid}`
-        : undefined;
+    const previewUrl =
+        token && previewOrigin !== null
+            ? `${previewOrigin}/api/apps/${appUuid}/versions/${version}/t/${token}/?r=${refreshKey}#transport=postMessage&projectUuid=${projectUuid}`
+            : undefined;
 
     // App data is loaded — always render the header chrome so users can still
     // navigate (rename, delete, "Continue building", …) when there's nothing
@@ -214,7 +215,12 @@ export default function AppPreviewTest() {
                 description="There's no ready version of this app to preview yet."
             />
         );
-    } else if (isTokenLoading || !previewUrl || !token) {
+    } else if (
+        isTokenLoading ||
+        !previewUrl ||
+        !token ||
+        previewOrigin === null
+    ) {
         body = <SuboptimalState loading title="Loading app..." />;
     } else {
         body = (

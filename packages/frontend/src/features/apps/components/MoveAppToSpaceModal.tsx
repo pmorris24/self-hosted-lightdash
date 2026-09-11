@@ -115,7 +115,10 @@ export const MoveAppToSpaceModal: FC<Props> = ({
         !!previewToken,
     );
     const previewUrl =
-        hasReadyVersion && previewToken && !visiblePreviewTokenError
+        hasReadyVersion &&
+        previewToken &&
+        !visiblePreviewTokenError &&
+        previewOrigin !== null
             ? `${previewOrigin}/api/apps/${app.uuid}/versions/${app.latestVersionNumber}/t/${previewToken}/?r=0#transport=postMessage&projectUuid=${projectUuid}`
             : undefined;
 
@@ -266,22 +269,26 @@ export const MoveAppToSpaceModal: FC<Props> = ({
                     onClose();
                 }}
             />
-            {opened && useFallbackPreview && previewUrl && previewToken && (
-                <Box className={classes.offscreenPreview} aria-hidden>
-                    <AppIframePreview
-                        ref={previewRef}
-                        src={previewUrl}
-                        previewToken={previewToken}
-                        expectedPreviewOrigin={previewOrigin}
-                        projectUuid={projectUuid}
-                        appUuid={app.uuid}
-                        identityKey={`${app.uuid}:move-thumbnail`}
-                        onScreenshotAvailabilityChange={
-                            handleScreenshotAvailability
-                        }
-                    />
-                </Box>
-            )}
+            {opened &&
+                useFallbackPreview &&
+                previewUrl &&
+                previewToken &&
+                previewOrigin !== null && (
+                    <Box className={classes.offscreenPreview} aria-hidden>
+                        <AppIframePreview
+                            ref={previewRef}
+                            src={previewUrl}
+                            previewToken={previewToken}
+                            expectedPreviewOrigin={previewOrigin}
+                            projectUuid={projectUuid}
+                            appUuid={app.uuid}
+                            identityKey={`${app.uuid}:move-thumbnail`}
+                            onScreenshotAvailabilityChange={
+                                handleScreenshotAvailability
+                            }
+                        />
+                    </Box>
+                )}
         </>
     );
 };

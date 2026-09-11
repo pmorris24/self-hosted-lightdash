@@ -268,7 +268,7 @@ const DataAppTile: FC<Props> = (props) => {
     );
 
     const previewUrl =
-        token && latestReadyVersion
+        token && latestReadyVersion && previewOrigin !== null
             ? `${previewOrigin}/api/apps/${appUuid}/versions/${latestReadyVersion}/t/${token}/?f=${filtersKey}&r=${refreshCounter}#transport=postMessage&projectUuid=${projectUuid}`
             : undefined;
     const visibleTokenError = getVisiblePreviewTokenError(tokenError, !!token);
@@ -347,7 +347,10 @@ const DataAppTile: FC<Props> = (props) => {
                             Failed to load app
                         </Text>
                     </Stack>
-                ) : isLoading || !previewUrl || !token ? (
+                ) : isLoading ||
+                  !previewUrl ||
+                  !token ||
+                  previewOrigin === null ? (
                     <Stack align="center" justify="center" h="100%">
                         <Loader size="sm" />
                     </Stack>

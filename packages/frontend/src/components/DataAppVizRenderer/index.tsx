@@ -462,6 +462,10 @@ const DataAppVizRenderer: FC<Props> = ({ onScreenshotReady }) => {
         );
     }
 
+    if (previewOrigin === null) {
+        return <DataAppVizPlaceholder message="Loading custom chart type…" />;
+    }
+
     const previewUrl = `${previewOrigin}/api/apps/${dataAppVizUuid}/versions/${renderMetadata.version}/t/${token}/?r=0#transport=postMessage&projectUuid=${projectUuid}`;
 
     return (
