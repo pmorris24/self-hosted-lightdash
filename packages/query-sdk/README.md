@@ -78,6 +78,22 @@ const lightdash = createClient({
 });
 ```
 
+### Embedding in your own frontend
+
+An API key must never ship in a browser bundle. To run an app natively in your own frontend, mint a short-lived embed JWT on your backend and pass it to `createEmbedClient`:
+
+```ts
+import { createEmbedClient } from '@lightdash/query-sdk';
+
+const lightdash = createEmbedClient({
+    embedToken, // minted server-side with the project's embed secret
+    baseUrl: 'https://app.lightdash.cloud',
+    projectUuid: 'uuid',
+});
+```
+
+Requests send the token in the `lightdash-embed-token` header, and `auth.getUser()` resolves from the embed user-info endpoint, so the token's user attributes apply to every query.
+
 ## Query builder
 
 Queries are built with a chainable, immutable API. Fields use short names (e.g. `driver_name`), and the SDK qualifies them automatically for the API.

@@ -15,6 +15,7 @@ import type {
     DownloadResultsOptions,
     DownloadResultsResult,
     DownloadUnderlyingDataOptions,
+    EmbedClientOptions,
     ExternalFetchOptions,
     ExternalFetchResult,
     FormatFunction,
@@ -230,22 +231,31 @@ function buildUnderlyingDataFilters(
     };
 }
 
-function createDefaultFetchAdapter(
-    config: LightdashClientConfig,
-): FetchAdapter {
+type HttpFetchAdapterOptions = {
+    baseUrl: string;
+    useProxy: boolean;
+    headers: Record<string, string>;
+    resolvePath: (method: string, path: string) => string;
+};
+
+function createHttpFetchAdapter({
+    baseUrl,
+    useProxy,
+    headers,
+    resolvePath,
+}: HttpFetchAdapterOptions): FetchAdapter {
     return async <T>(
         method: string,
         path: string,
         body?: unknown,
     ): Promise<T> => {
-        const useProxy = config.useProxy ?? false;
-        const baseUrl = useProxy ? '' : config.baseUrl.replace(/\/$/, '');
-        const url = `${baseUrl}${path}`;
+        const prefix = useProxy ? '' : baseUrl.replace(/\/$/, '');
+        const url = `${prefix}${resolvePath(method, path)}`;
         const res = await fetch(url, {
             method,
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `ApiKey ${config.apiKey}`,
+                ...headers,
             },
             ...(body ? { body: JSON.stringify(body) } : {}),
         });
@@ -265,6 +275,40 @@ function createDefaultFetchAdapter(
         const json = (await res.json()) as ApiResponse<T>;
         return json.results;
     };
+}
+
+function createDefaultFetchAdapter(
+    config: LightdashClientConfig,
+): FetchAdapter {
+    return createHttpFetchAdapter({
+        baseUrl: config.baseUrl,
+        useProxy: config.useProxy ?? false,
+        headers: { Authorization: `ApiKey ${config.apiKey}` },
+        resolvePath: (_method, path) => path,
+    });
+}
+
+// Mirrors JWT_HEADER_NAME in @lightdash/common, which this package can't import.
+const EMBED_JWT_HEADER_NAME = 'lightdash-embed-token';
+
+/**
+ * Authenticates with an embed JWT, mirroring the embed branch of the host's
+ * `useAppSdkBridge`: embed tokens can't call `/api/v1/user`, so it is
+ * rewritten to the embed user-info endpoint.
+ */
+export function createEmbedFetchAdapter(
+    options: EmbedClientOptions,
+): FetchAdapter {
+    const userInfoPath = `/api/v1/embed/${options.projectUuid}/user-info`;
+    return createHttpFetchAdapter({
+        baseUrl: options.baseUrl,
+        useProxy: options.useProxy ?? false,
+        headers: { [EMBED_JWT_HEADER_NAME]: options.embedToken },
+        resolvePath: (method, path) =>
+            method.toUpperCase() === 'GET' && path === '/api/v1/user'
+                ? userInfoPath
+                : path,
+    });
 }
 
 function buildMetricQueryBody(

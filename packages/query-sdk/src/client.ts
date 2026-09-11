@@ -3,15 +3,17 @@
  *
  * Usage:
  *   const lightdash = createClient()  // auto-detects from environment
+ *   const lightdash = createEmbedClient({ embedToken, baseUrl, projectUuid })
  */
 
-import { createApiTransport } from './apiTransport';
+import { createApiTransport, createEmbedFetchAdapter } from './apiTransport';
 import { applyColorSchemeSeed, mountColorScheme } from './colorScheme';
 import { mountInspector } from './inspector';
 import { mountLineage } from './lineage';
 import { createPostMessageTransport } from './postMessageTransport';
 import { QueryBuilder } from './query';
 import type {
+    EmbedClientOptions,
     ExternalFetchOptions,
     ExternalFetchResult,
     LightdashClientConfig,
@@ -134,4 +136,29 @@ export function createClient(): LightdashClient {
         );
     }
     return new LightdashClient(config, createApiTransport(config));
+}
+
+/**
+ * Create a client for an app bundle imported into a customer's own frontend.
+ * Authenticates with an embed JWT, so no API key ships in the bundle.
+ */
+export function createEmbedClient(
+    options: EmbedClientOptions,
+): LightdashClient {
+    // Guards untyped callers, e.g. a host page calling a packaged app's mount().
+    if (!options.embedToken || !options.baseUrl || !options.projectUuid) {
+        throw new Error(
+            'createEmbedClient requires embedToken, baseUrl and projectUuid.',
+        );
+    }
+    const config: LightdashClientConfig = {
+        apiKey: '',
+        baseUrl: options.baseUrl,
+        projectUuid: options.projectUuid,
+        useProxy: options.useProxy,
+    };
+    return new LightdashClient(
+        config,
+        createApiTransport(config, createEmbedFetchAdapter(options)),
+    );
 }

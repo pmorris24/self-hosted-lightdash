@@ -297,6 +297,18 @@ export type LightdashClientConfig = {
     useProxy?: boolean;
 };
 
+/** Options for an app bundle running in a customer's own frontend. */
+export type EmbedClientOptions = {
+    /** Lightdash instance URL */
+    baseUrl: string;
+    /** Project UUID the embed token was minted for */
+    projectUuid: string;
+    /** Short-lived embed JWT minted by the customer's backend */
+    embedToken: string;
+    /** Use relative /api paths instead of baseUrl (for same-origin proxy setups) */
+    useProxy?: boolean;
+};
+
 // --- User ---
 
 export type LightdashUser = {

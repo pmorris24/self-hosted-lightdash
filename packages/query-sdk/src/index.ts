@@ -6,7 +6,7 @@ export { savedChart, type SavedChartQuery } from './savedChart';
 export { drillDown } from './drillDown';
 
 // Client
-export { createClient, LightdashClient } from './client';
+export { createClient, createEmbedClient, LightdashClient } from './client';
 
 // React hook
 export { useLightdash } from './useLightdash';
@@ -39,6 +39,7 @@ export type {
     DownloadResultsResult,
     DownloadResultsValues,
     DownloadUnderlyingDataOptions,
+    EmbedClientOptions,
     ExternalFetchMethod,
     ExternalFetchOptions,
     ExternalFetchResult,
