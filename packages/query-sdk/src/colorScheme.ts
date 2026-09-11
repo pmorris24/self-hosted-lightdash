@@ -24,12 +24,17 @@
  * hook, and the only scope Radix portals inherit) plus the CSS `color-scheme`
  * property, so form controls and scrollbars follow too.
  *
+ * Embedded in a customer's own page (`createEmbedClient`), `<html>` belongs to
+ * that page: the scheme is tracked but never stamped, and the page sets it
+ * with `setColorScheme`.
+ *
  * Seed and message both cross a trust boundary — the hash is user-editable and
  * the message is postMessage — so both are validated, and messages are only
  * accepted from the window the client was created against.
  */
 
 import { useSyncExternalStore } from 'react';
+import { isEmbedded } from './embedMode';
 
 export type HostColorScheme = 'light' | 'dark';
 
@@ -128,7 +133,7 @@ export function createColorSchemeStore(options: {
  */
 function readSeed(): HostColorScheme {
     if (typeof window === 'undefined') return 'light';
-    const seed = parseColorSchemeSeed(window.location);
+    const seed = isEmbedded() ? null : parseColorSchemeSeed(window.location);
     if (seed) return seed;
     return document.documentElement.classList.contains(DARK_CLASS)
         ? 'dark'
@@ -139,7 +144,10 @@ function readSeed(): HostColorScheme {
 let sharedStore: ColorSchemeStore | null = null;
 function getSharedStore(): ColorSchemeStore {
     if (sharedStore === null) {
-        sharedStore = createColorSchemeStore({ seed: readSeed() });
+        sharedStore = createColorSchemeStore({
+            seed: readSeed(),
+            apply: isEmbedded() ? () => {} : applyColorScheme,
+        });
     }
     return sharedStore;
 }
@@ -154,6 +162,14 @@ let activeCleanup: (() => void) | null = null;
  */
 export function applyColorSchemeSeed(): void {
     applyColorScheme(getSharedStore().getScheme());
+}
+
+/**
+ * Set the scheme from the page hosting the app, e.g. a customer frontend
+ * following its own theme toggle. Embedded apps never stamp `<html>`.
+ */
+export function setColorScheme(scheme: HostColorScheme): void {
+    getSharedStore().setScheme(scheme);
 }
 
 /**

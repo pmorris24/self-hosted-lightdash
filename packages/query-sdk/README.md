@@ -80,19 +80,24 @@ const lightdash = createClient({
 
 ### Embedding in your own frontend
 
-An API key must never ship in a browser bundle. To run an app natively in your own frontend, mint a short-lived embed JWT on your backend and pass it to `createEmbedClient`:
+An API key must never ship in a browser bundle. To run an app natively in your own frontend, mint a short-lived embed JWT on your backend (content `{ type: 'dataApp', appUuid }`, signed with the project's embed secret) and pass it to `createEmbedClient`:
 
 ```ts
-import { createEmbedClient } from '@lightdash/query-sdk';
+import { createEmbedClient, setColorScheme } from '@lightdash/query-sdk';
 
 const lightdash = createEmbedClient({
-    embedToken, // minted server-side with the project's embed secret
+    embedToken,
     baseUrl: 'https://app.lightdash.cloud',
     projectUuid: 'uuid',
+    appUuid: 'uuid',
 });
+setColorScheme('dark'); // optional: follow your page's theme
 ```
 
-Requests send the token in the `lightdash-embed-token` header, and `auth.getUser()` resolves from the embed user-info endpoint, so the token's user attributes apply to every query.
+- Requests send the token in the `lightdash-embed-token` header, and `auth.getUser()` resolves from the embed user-info endpoint, so the token's user attributes apply to every query.
+- The SDK runs in embedded mode: `useUrlState` keeps state in memory instead of your page's URL, the colour scheme never touches your `<html>`, and `exportToSheets` and viz context, which need the Lightdash host, are unavailable. `externalFetch` works through the app's linked connections.
+- The project's embed settings must allow the app, and your origin must be in the instance's CORS allowlist (`LIGHTDASH_CORS_ALLOWED_DOMAINS`).
+- A data app token can't run saved charts (`savedChart`), underlying data, or custom SQL fields.
 
 ## Query builder
 

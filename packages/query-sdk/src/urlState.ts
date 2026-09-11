@@ -6,12 +6,15 @@
  * Inside the Lightdash iframe the seed arrives synchronously in the hash
  * (written there by the host from its own `?state=`) and changes are posted to
  * the parent; top-level (local dev) the app reads and writes its own `?state=`.
+ * Embedded in a customer's own page (`createEmbedClient`), state stays in
+ * memory: that page's URL isn't the app's.
  * See the "Shareable URL state" section of docs/data-apps.md.
  *
  * Seeded values come from a user-editable URL — treat them as untrusted.
  */
 
 import { useCallback, useRef, useSyncExternalStore } from 'react';
+import { isEmbedded } from './embedMode';
 
 export type UrlStateMap = Record<string, unknown>;
 
@@ -165,20 +168,28 @@ export function createUrlStateStore(options: {
     };
 }
 
+/** The store every `useUrlState` call shares. Exported for tests. */
+export function createSharedUrlStateStore(): UrlStateStore {
+    if (isEmbedded()) {
+        return createUrlStateStore({ seed: {}, publish: () => {} });
+    }
+    // Prime the transport-mode latch now — first hook call happens during
+    // the first render, before any user interaction can mutate the hash.
+    isPostMessageMode();
+    return createUrlStateStore({
+        seed:
+            typeof window === 'undefined'
+                ? {}
+                : parseUrlStateSeed(window.location),
+        publish: publishUrlState,
+    });
+}
+
 // Lazily created so tests (and SSR) never touch window at import time.
 let sharedStore: UrlStateStore | null = null;
 function getSharedStore(): UrlStateStore {
     if (sharedStore === null) {
-        // Prime the transport-mode latch now — first hook call happens during
-        // the first render, before any user interaction can mutate the hash.
-        isPostMessageMode();
-        sharedStore = createUrlStateStore({
-            seed:
-                typeof window === 'undefined'
-                    ? {}
-                    : parseUrlStateSeed(window.location),
-            publish: publishUrlState,
-        });
+        sharedStore = createSharedUrlStateStore();
     }
     return sharedStore;
 }

@@ -23,6 +23,7 @@ import {
     useState,
     type ReactNode,
 } from 'react';
+import { isEmbedded } from './embedMode';
 import { useOptionalTransport } from './LightdashProvider';
 import type {
     ColumnType,
@@ -451,7 +452,10 @@ function useVizContextSubscription(enabled: boolean): VizContextState {
     const [context, setContext] = useState<VizContextState>(null);
 
     useEffect(() => {
-        if (!enabled || typeof window === 'undefined') return undefined;
+        // Embedded apps have no viz host to ask, and the page URL isn't theirs.
+        if (!enabled || typeof window === 'undefined' || isEmbedded()) {
+            return undefined;
+        }
 
         const handleMessage = (event: MessageEvent) => {
             const data = event.data as DataAppVizContextMessage | undefined;

@@ -1,9 +1,10 @@
-import { JWT_HEADER_NAME } from '@lightdash/common';
+import { JWT_HEADER_NAME, LightdashAppUuidHeader } from '@lightdash/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEmbedClient } from './client';
 
 const BASE_URL = 'https://lightdash.example.com/';
 const PROJECT_UUID = 'proj-1';
+const APP_UUID = 'app-1';
 const EMBED_TOKEN = 'embed-jwt';
 
 const EMBED_USER = {
@@ -20,6 +21,7 @@ type SentRequest = {
     url: string;
     method: string;
     headers: Record<string, string>;
+    body: string | undefined;
 };
 
 const okResponse = (results: unknown) => ({
@@ -51,6 +53,7 @@ function stubFetch(
                 url,
                 method: init.method ?? 'GET',
                 headers: init.headers as Record<string, string>,
+                body: typeof init.body === 'string' ? init.body : undefined,
             };
             sent.push(request);
             return respond(request);
@@ -59,13 +62,15 @@ function stubFetch(
     return sent;
 }
 
+const EMBED_OPTIONS = {
+    baseUrl: BASE_URL,
+    projectUuid: PROJECT_UUID,
+    appUuid: APP_UUID,
+    embedToken: EMBED_TOKEN,
+};
+
 const createTestClient = (useProxy?: boolean) =>
-    createEmbedClient({
-        baseUrl: BASE_URL,
-        projectUuid: PROJECT_UUID,
-        embedToken: EMBED_TOKEN,
-        useProxy,
-    });
+    createEmbedClient({ ...EMBED_OPTIONS, useProxy });
 
 describe('createEmbedClient', () => {
     afterEach(() => {
@@ -136,6 +141,7 @@ describe('createEmbedClient', () => {
                 /^https:\/\/lightdash\.example\.com\/api\//,
             );
             expect(request.headers[JWT_HEADER_NAME]).toBe(EMBED_TOKEN);
+            expect(request.headers[LightdashAppUuidHeader]).toBe(APP_UUID);
             expect(request.headers.Authorization).toBeUndefined();
         }
     });
@@ -168,6 +174,35 @@ describe('createEmbedClient', () => {
         expect(sent[0].url).toBe('/api/v1/embed/proj-1/user-info');
     });
 
+    it("proxies external fetches through the app's external-fetch endpoint", async () => {
+        const upstream = {
+            status: 201,
+            contentType: 'application/json',
+            headers: {},
+            body: { id: 'ch_1' },
+            truncated: false,
+        };
+        const sent = stubFetch(() => okResponse(upstream));
+
+        const result = await createTestClient().externalFetch('stripe', {
+            method: 'POST',
+            path: '/v1/charges',
+            body: { amount: 100 },
+        });
+
+        expect(result).toEqual(upstream);
+        expect(sent[0].method).toBe('POST');
+        expect(sent[0].url).toBe(
+            'https://lightdash.example.com/api/v1/ee/projects/proj-1/apps/app-1/external-fetch',
+        );
+        expect(JSON.parse(sent[0].body ?? '')).toEqual({
+            connectionAlias: 'stripe',
+            method: 'POST',
+            path: '/v1/charges',
+            body: { amount: 100 },
+        });
+    });
+
     it.each([
         [
             'a JSON error body',
@@ -198,13 +233,21 @@ describe('createEmbedClient', () => {
 
     it('rejects options without an embed token', () => {
         expect(() =>
-            createEmbedClient({
-                baseUrl: BASE_URL,
-                projectUuid: PROJECT_UUID,
-                embedToken: '',
-            }),
+            createEmbedClient({ ...EMBED_OPTIONS, embedToken: '' }),
         ).toThrow(
-            'createEmbedClient requires embedToken, baseUrl and projectUuid.',
+            'createEmbedClient requires embedToken, baseUrl, projectUuid and appUuid.',
         );
+    });
+
+    it('switches the SDK into embedded mode', async () => {
+        vi.resetModules();
+        const client = await import('./client');
+        const { exportToSheets } = await import('./exportToSheets');
+
+        client.createEmbedClient(EMBED_OPTIONS);
+
+        await expect(
+            exportToSheets({ title: 'Usage', columns: [], rows: [] }),
+        ).rejects.toThrow('not available when the app is embedded');
     });
 });

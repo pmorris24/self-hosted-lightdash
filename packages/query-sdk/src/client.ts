@@ -3,11 +3,16 @@
  *
  * Usage:
  *   const lightdash = createClient()  // auto-detects from environment
- *   const lightdash = createEmbedClient({ embedToken, baseUrl, projectUuid })
+ *   const lightdash = createEmbedClient({ embedToken, baseUrl, projectUuid, appUuid })
  */
 
-import { createApiTransport, createEmbedFetchAdapter } from './apiTransport';
+import {
+    createApiTransport,
+    createEmbedExternalFetch,
+    createEmbedFetchAdapter,
+} from './apiTransport';
 import { applyColorSchemeSeed, mountColorScheme } from './colorScheme';
+import { markEmbedded } from './embedMode';
 import { mountInspector } from './inspector';
 import { mountLineage } from './lineage';
 import { createPostMessageTransport } from './postMessageTransport';
@@ -140,25 +145,34 @@ export function createClient(): LightdashClient {
 
 /**
  * Create a client for an app bundle imported into a customer's own frontend.
- * Authenticates with an embed JWT, so no API key ships in the bundle.
+ * Authenticates with an embed JWT, so no API key ships in the bundle, and
+ * switches the SDK into embedded mode: the page's URL, `<html>` and parent
+ * window are left alone.
  */
 export function createEmbedClient(
     options: EmbedClientOptions,
 ): LightdashClient {
     // Guards untyped callers, e.g. a host page calling a packaged app's mount().
-    if (!options.embedToken || !options.baseUrl || !options.projectUuid) {
+    if (
+        !options.embedToken ||
+        !options.baseUrl ||
+        !options.projectUuid ||
+        !options.appUuid
+    ) {
         throw new Error(
-            'createEmbedClient requires embedToken, baseUrl and projectUuid.',
+            'createEmbedClient requires embedToken, baseUrl, projectUuid and appUuid.',
         );
     }
+    markEmbedded();
     const config: LightdashClientConfig = {
         apiKey: '',
         baseUrl: options.baseUrl,
         projectUuid: options.projectUuid,
         useProxy: options.useProxy,
     };
-    return new LightdashClient(
-        config,
-        createApiTransport(config, createEmbedFetchAdapter(options)),
-    );
+    const fetchAdapter = createEmbedFetchAdapter(options);
+    return new LightdashClient(config, {
+        ...createApiTransport(config, fetchAdapter),
+        externalFetch: createEmbedExternalFetch(options, fetchAdapter),
+    });
 }

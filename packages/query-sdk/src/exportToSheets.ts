@@ -6,6 +6,7 @@
  * job polling. This function awaits one response.
  */
 
+import { isEmbedded } from './embedMode';
 import type {
     SdkGsheetExportColumn,
     SdkGsheetExportRequest,
@@ -31,6 +32,13 @@ export async function exportToSheets(
     if (typeof window === 'undefined') {
         throw new Error(
             'exportToSheets must run in a browser context (iframe)',
+        );
+    }
+    if (isEmbedded()) {
+        // Needs the Lightdash host's Google sign-in, and a customer page's
+        // parent window must never receive the rows.
+        throw new Error(
+            'exportToSheets is not available when the app is embedded in your own frontend',
         );
     }
     if (window.parent === window) {

@@ -303,6 +303,8 @@ export type EmbedClientOptions = {
     baseUrl: string;
     /** Project UUID the embed token was minted for */
     projectUuid: string;
+    /** Data app UUID the embed token was minted for */
+    appUuid: string;
     /** Short-lived embed JWT minted by the customer's backend */
     embedToken: string;
     /** Use relative /api paths instead of baseUrl (for same-origin proxy setups) */

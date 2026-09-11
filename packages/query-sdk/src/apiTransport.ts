@@ -288,13 +288,15 @@ function createDefaultFetchAdapter(
     });
 }
 
-// Mirrors JWT_HEADER_NAME in @lightdash/common, which this package can't import.
+// Mirror JWT_HEADER_NAME and LightdashAppUuidHeader in @lightdash/common,
+// which this package can't import.
 const EMBED_JWT_HEADER_NAME = 'lightdash-embed-token';
+const APP_UUID_HEADER_NAME = 'Lightdash-App-Uuid';
 
 /**
  * Authenticates with an embed JWT, mirroring the embed branch of the host's
- * `useAppSdkBridge`: embed tokens can't call `/api/v1/user`, so it is
- * rewritten to the embed user-info endpoint.
+ * `useAppSdkBridge`: requests carry the app's UUID, and embed tokens can't
+ * call `/api/v1/user`, so it is rewritten to the embed user-info endpoint.
  */
 export function createEmbedFetchAdapter(
     options: EmbedClientOptions,
@@ -303,12 +305,34 @@ export function createEmbedFetchAdapter(
     return createHttpFetchAdapter({
         baseUrl: options.baseUrl,
         useProxy: options.useProxy ?? false,
-        headers: { [EMBED_JWT_HEADER_NAME]: options.embedToken },
+        headers: {
+            [EMBED_JWT_HEADER_NAME]: options.embedToken,
+            [APP_UUID_HEADER_NAME]: options.appUuid,
+        },
         resolvePath: (method, path) =>
             method.toUpperCase() === 'GET' && path === '/api/v1/user'
                 ? userInfoPath
                 : path,
     });
+}
+
+/**
+ * External-connection fetch for an embedded app, through the same EE endpoint
+ * the host bridge proxies to. The backend checks the token is for this app.
+ */
+export function createEmbedExternalFetch(
+    options: EmbedClientOptions,
+    fetchFn: FetchAdapter,
+): Transport['externalFetch'] {
+    const path = `/api/v1/ee/projects/${options.projectUuid}/apps/${options.appUuid}/external-fetch`;
+    return (alias, opts) =>
+        fetchFn<ExternalFetchResult>('POST', path, {
+            connectionAlias: alias,
+            method: opts.method ?? 'GET',
+            path: opts.path,
+            query: opts.query,
+            body: opts.body,
+        });
 }
 
 function buildMetricQueryBody(

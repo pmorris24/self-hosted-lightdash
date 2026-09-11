@@ -116,7 +116,7 @@ export type {
 } from './vizContext';
 
 // Host light/dark mode (seeded from the iframe URL, updated by the host)
-export { useColorScheme } from './colorScheme';
+export { setColorScheme, useColorScheme } from './colorScheme';
 export type {
     HostColorScheme,
     HostColorSchemeMessage,
