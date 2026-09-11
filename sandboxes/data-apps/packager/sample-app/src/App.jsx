@@ -1,6 +1,6 @@
 import { ErrorBoundary } from '@/lib/ErrorBoundary';
 import { AppHeader } from './components/AppHeader';
-import { SpendByModelChart } from './components/SpendByModelChart';
+import { ModelUsageChart } from './components/ModelUsageChart';
 import { UsageByModelTable } from './components/UsageByModelTable';
 import { UsageKpis } from './components/UsageKpis';
 
@@ -13,7 +13,7 @@ function App() {
             </ErrorBoundary>
             <div className="grid gap-4 lg:grid-cols-2">
                 <ErrorBoundary>
-                    <SpendByModelChart />
+                    <ModelUsageChart />
                 </ErrorBoundary>
                 <ErrorBoundary>
                     <UsageByModelTable />

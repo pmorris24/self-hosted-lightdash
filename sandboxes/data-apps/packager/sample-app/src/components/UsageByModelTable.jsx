@@ -1,5 +1,13 @@
-import { query, useLightdash } from '@lightdash/query-sdk';
+import { useMemo } from 'react';
+import { query, useLightdash, useUrlState } from '@lightdash/query-sdk';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -9,21 +17,42 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
+const SORT_LABELS = { tokens: 'Tokens', spend: 'Spend' };
+
 const usageByModelQuery = query('inference_usage')
     .label('Usage by Model Table')
     .dimensions(['model'])
     .metrics(['spend', 'tokens'])
-    .sorts([{ field: 'tokens', direction: 'desc' }])
     .limit(50);
 
 export function UsageByModelTable() {
-    const { data, format, loading, error, lineage } =
-        useLightdash(usageByModelQuery);
+    const [sortParam, setSortParam] = useUrlState('tableSort', 'tokens');
+    // URL state is untrusted: fall back when it isn't a known sort.
+    const sortField = Object.hasOwn(SORT_LABELS, sortParam)
+        ? sortParam
+        : 'tokens';
+    const sortedQuery = useMemo(
+        () => usageByModelQuery.sorts([{ field: sortField, direction: 'desc' }]),
+        [sortField],
+    );
+    const { data, format, loading, error, lineage } = useLightdash(sortedQuery);
 
     return (
         <Card {...lineage}>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base">Usage by model</CardTitle>
+                <Select value={sortField} onValueChange={setSortParam}>
+                    <SelectTrigger className="w-40" aria-label="Sort by">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Object.entries(SORT_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                                Sort by {label.toLowerCase()}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </CardHeader>
             <CardContent>
                 {error ? (
