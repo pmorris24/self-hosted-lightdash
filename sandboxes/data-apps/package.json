@@ -6,7 +6,8 @@
         "test": "tsx test-generate.ts",
         "bench": "tsx benchmark/run.ts",
         "bench:render": "tsx benchmark/renderGate.ts",
-        "bench:gallery": "tsx benchmark/gallery.ts"
+        "bench:gallery": "tsx benchmark/gallery.ts",
+        "package-app": "node packager/package-app.ts"
     },
     "dependencies": {
         "e2b": "2.15.0",
