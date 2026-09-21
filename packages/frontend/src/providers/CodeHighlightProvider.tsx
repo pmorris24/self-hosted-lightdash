@@ -10,6 +10,7 @@ import json from 'highlight.js/lib/languages/json';
 import python from 'highlight.js/lib/languages/python';
 import sql from 'highlight.js/lib/languages/sql';
 import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 import { type FC, type PropsWithChildren } from 'react';
 import '../styles/hljs-theme.css';
@@ -21,6 +22,8 @@ hljs.registerLanguage('json', json);
 hljs.registerLanguage('python', python);
 hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('typescript', typescript);
+// Covers HTML too (hljs aliases html → xml)
+hljs.registerLanguage('xml', xml);
 hljs.registerLanguage('yaml', yaml);
 hljs.registerAliases(['tsx'], { languageName: 'typescript' });
 

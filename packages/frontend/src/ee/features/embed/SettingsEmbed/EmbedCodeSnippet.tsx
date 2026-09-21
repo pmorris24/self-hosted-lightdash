@@ -187,7 +187,7 @@ key = "secret" # replace with your secret
 projectUuid = '{{projectUuid}}'
 
 data = {
-    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=1), # replace with your expiration time,
+    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta({{pythonExpiry}}), # token lifetime
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "chart",
@@ -276,7 +276,7 @@ func main() {
         // To run actions as a user instead, set UserUuid and leave ServiceAccountUserUuid empty.
         WriteActions: {{writeActionsGo}},
         StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(time.Hour).Unix(), // replace with your expiration
+            ExpiresAt: time.Now().Add({{goExpiry}}).Unix(), // token lifetime
         },
     }
 
@@ -325,7 +325,7 @@ projectUuid = '{{projectUuid}}'
 appUuid = '{{appUuid}}'
 
 data = {
-    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=1), # replace with your expiration time,
+    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta({{pythonExpiry}}), # token lifetime
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "dataApp",
@@ -394,7 +394,7 @@ func main() {
         },
         UserAttributes: map[string]string{{userAttributes}},
         StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(time.Hour).Unix(), // replace with your expiration
+            ExpiresAt: time.Now().Add({{goExpiry}}).Unix(), // token lifetime
         },
     }
 
@@ -448,7 +448,7 @@ projectUuid = '{{projectUuid}}'
 agentUuid = '{{agentUuid}}'
 
 data = {
-    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=1), # replace with your expiration time,
+    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta({{pythonExpiry}}), # token lifetime
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "aiAgent",
@@ -533,7 +533,7 @@ func main() {
         // To run actions as a user instead, set UserUuid and leave ServiceAccountUserUuid empty.
         WriteActions: {{writeActionsGo}},
         StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(time.Hour).Unix(), // replace with your expiration
+            ExpiresAt: time.Now().Add({{goExpiry}}).Unix(), // token lifetime
         },
     }
 
@@ -583,7 +583,7 @@ projectUuid = '{{projectUuid}}'
 agentUuid = '{{agentUuid}}'
 
 data = {
-    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=1), # replace with your expiration time,
+    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta({{pythonExpiry}}), # token lifetime
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "aiAgent",
@@ -662,7 +662,7 @@ func main() {
         // To run actions as a user instead, set UserUuid and leave ServiceAccountUserUuid empty.
         WriteActions: {{writeActionsGo}},
         StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(time.Hour).Unix(), // replace with your expiration
+            ExpiresAt: time.Now().Add({{goExpiry}}).Unix(), // token lifetime
         },
     }
 
@@ -721,7 +721,7 @@ key = "secret" # replace with your secret
 projectUuid = '{{projectUuid}}'
 
 data = {
-    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=1), # replace with your expiration time,
+    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta({{pythonExpiry}}), # token lifetime
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "dashboard",
@@ -873,7 +873,7 @@ func main() {
         // To run actions as a user instead, set UserUuid and leave ServiceAccountUserUuid empty.
         WriteActions: {{writeActionsGo}},
         StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(time.Hour).Unix(), // replace with your expiration
+            ExpiresAt: time.Now().Add({{goExpiry}}).Unix(), // token lifetime
         },
     }
 
@@ -923,7 +923,7 @@ key = "secret" # replace with your secret
 projectUuid = '{{projectUuid}}'
 
 data = {
-    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=1), # replace with your expiration time,
+    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta({{pythonExpiry}}), # token lifetime
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "chart",
@@ -1009,7 +1009,7 @@ func main() {
         // To run actions as a user instead, set UserUuid and leave ServiceAccountUserUuid empty.
         WriteActions: {{writeActionsGo}},
         StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(time.Hour).Unix(), // replace with your expiration
+            ExpiresAt: time.Now().Add({{goExpiry}}).Unix(), // token lifetime
         },
     }
 
@@ -1067,7 +1067,7 @@ key = "secret" # replace with your secret
 projectUuid = '{{projectUuid}}'
 
 data = {
-    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=1), # replace with your expiration time,
+    "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta({{pythonExpiry}}), # token lifetime
     "iat": datetime.datetime.now(tz=datetime.timezone.utc),
     "content": {
         "type": "dashboard",
@@ -1216,7 +1216,7 @@ func main() {
         // To run actions as a user instead, set UserUuid and leave ServiceAccountUserUuid empty.
         WriteActions: {{writeActionsGo}},
         StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(time.Hour).Unix(), // replace with your expiration
+            ExpiresAt: time.Now().Add({{goExpiry}}).Unix(), // token lifetime
         },
     }
 
@@ -1230,6 +1230,19 @@ func main() {
 }
 `,
 };
+
+// The lifetimes the embed forms offer, in each backend language's own terms.
+// Anything else falls back to 1 hour, the forms' default.
+const EXPIRY_BY_LANGUAGE: Record<string, { python: string; go: string }> = {
+    '1 hour': { python: 'hours=1', go: 'time.Hour' },
+    '1 day': { python: 'days=1', go: '24 * time.Hour' },
+    '1 week': { python: 'weeks=1', go: '7 * 24 * time.Hour' },
+    '30 days': { python: 'days=30', go: '30 * 24 * time.Hour' },
+    '1 year': { python: 'days=365', go: '365 * 24 * time.Hour' },
+};
+
+const getExpiryForLanguage = (expiresIn: string | undefined) =>
+    EXPIRY_BY_LANGUAGE[expiresIn ?? '1 hour'] ?? EXPIRY_BY_LANGUAGE['1 hour'];
 
 const getBackendCodeSnippet = (
     language: SnippetLanguage,
@@ -1280,6 +1293,11 @@ const getBackendCodeSnippet = (
         .replace('{{projectUuid}}', projectUuid)
         .replace('{{siteUrl}}', siteUrl)
         .replace('{{expiresIn}}', data.expiresIn || '1 hour')
+        .replace(
+            '{{pythonExpiry}}',
+            getExpiryForLanguage(data.expiresIn).python,
+        )
+        .replace('{{goExpiry}}', getExpiryForLanguage(data.expiresIn).go)
         .replace(
             '{{userAttributes}}',
             JSON.stringify(data.userAttributes || {}),
@@ -1571,7 +1589,19 @@ export const EmbeddedAiAgent = ({ embedJwt }: EmbeddedAiAgentProps) => {
     }
 };
 
-const CodeSnippetTabs: FC<{
+export const ReactSdkFrontendCodeBlock: FC<{
+    data: CreateEmbedJwt;
+    siteUrl: string;
+    onCopySnippet: () => void;
+}> = ({ data, siteUrl, onCopySnippet }) => (
+    <CodeBlock
+        code={getReactSdkFrontendSnippet({ data, siteUrl })}
+        language="tsx"
+        onCopy={onCopySnippet}
+    />
+);
+
+export const CodeSnippetTabs: FC<{
     data: CreateEmbedJwt;
     mode: EmbedMethod;
     onCopySnippet: () => void;
