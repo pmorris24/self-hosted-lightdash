@@ -2246,6 +2246,36 @@ export class SpaceModel {
         return rows.map((r) => r.space_uuid);
     }
 
+    async getDescendantSpaceUuidsForParents(
+        parentSpaceUuids: string[],
+    ): Promise<string[]> {
+        if (parentSpaceUuids.length === 0) return [];
+        // Same parent_space_uuid walk as getDescendantSpaceUuids, seeded from
+        // many parents. UNION (not ALL) dedupes overlapping subtrees.
+        const rows: { space_uuid: string }[] = await this.database
+            .raw(
+                `
+                WITH RECURSIVE descendants AS (
+                    SELECT space_uuid
+                    FROM ${SpaceTableName}
+                    WHERE parent_space_uuid = ANY(?::uuid[])
+                      AND deleted_at IS NULL
+
+                    UNION
+
+                    SELECT s.space_uuid
+                    FROM ${SpaceTableName} s
+                    JOIN descendants d ON s.parent_space_uuid = d.space_uuid
+                    WHERE s.deleted_at IS NULL
+                )
+                SELECT space_uuid FROM descendants
+                `,
+                [parentSpaceUuids],
+            )
+            .then((res: { rows: { space_uuid: string }[] }) => res.rows);
+        return rows.map((r) => r.space_uuid);
+    }
+
     async getChildSpaceUuids(
         spaceUuid: string,
         options?: { deleted?: boolean; deletedByUserUuid?: string },

@@ -26,6 +26,9 @@ export const dataAppContentConfiguration: ContentConfiguration<SummaryContentRow
         // Only dashboards have owners, so the owner filter excludes data apps
         shouldQueryBeIncluded: (filters: ContentFilters) =>
             !filters.ownerUserUuids &&
+            // Data apps have no chart kind and cannot be verified
+            !filters.chart?.kinds &&
+            !filters.verifiedOnly &&
             (!filters.contentTypes ||
                 filters.contentTypes?.includes(ContentType.DATA_APP)),
         getSummaryQuery: (

@@ -222,6 +222,17 @@ export const dbtExploreChartContentConfiguration: ContentConfiguration<SelectSav
                             filters.search,
                         );
                     }
+                    if (filters.chart?.kinds) {
+                        void builder.whereIn(
+                            `${SavedChartsTableName}.last_version_chart_kind`,
+                            filters.chart.kinds,
+                        );
+                    }
+                    if (filters.verifiedOnly) {
+                        void builder.whereNotNull(
+                            `${ContentVerificationTableName}.verified_at`,
+                        );
+                    }
 
                     // Exclude charts in deleted spaces
                     void builder.whereNull(`${SpaceTableName}.deleted_at`);

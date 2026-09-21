@@ -71,37 +71,19 @@ export class ContentModel {
 
         // Trailing uuid keeps the order stable when the sort column has ties
         // (e.g. equal view counts), so paginated results don't skip/repeat rows.
-        if (queryArgs.sortBy) {
-            void query.orderBy([
-                {
-                    column: 'content_type_rank',
-                    order: 'ASC',
-                },
-                {
-                    column: queryArgs.sortBy,
-                    order: queryArgs.sortDirection ?? 'DESC',
-                },
-                {
-                    column: 'uuid',
-                    order: 'ASC',
-                },
-            ]);
-        } else {
-            void query.orderBy([
-                {
-                    column: 'content_type_rank',
-                    order: 'ASC',
-                },
-                {
-                    column: 'last_updated_at',
-                    order: 'DESC',
-                },
-                {
-                    column: 'uuid',
-                    order: 'ASC',
-                },
-            ]);
-        }
+        const typeRankOrder = queryArgs.interleaveContentTypes
+            ? []
+            : [{ column: 'content_type_rank', order: 'ASC' as const }];
+        void query.orderBy([
+            ...typeRankOrder,
+            queryArgs.sortBy
+                ? {
+                      column: queryArgs.sortBy,
+                      order: queryArgs.sortDirection ?? ('DESC' as const),
+                  }
+                : { column: 'last_updated_at', order: 'DESC' as const },
+            { column: 'uuid', order: 'ASC' as const },
+        ]);
 
         const { pagination, data } = await KnexPaginate.paginate(
             query,

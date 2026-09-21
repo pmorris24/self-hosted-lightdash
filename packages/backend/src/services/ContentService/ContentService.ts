@@ -130,6 +130,15 @@ export class ContentService extends BaseService {
         if (organizationUuid === undefined) {
             throw new NotFoundError('Organization not found');
         }
+        if (
+            filters.chart?.kinds &&
+            filters.contentTypes &&
+            !filters.contentTypes.includes(ContentType.CHART)
+        ) {
+            throw new ParameterError(
+                'chartKinds can only be used when contentTypes includes "chart"',
+            );
+        }
         const auditedAbility = this.createAuditedAbility(user);
         const projects = await wrapSentryTransaction(
             'ContentService.find.getAllByOrganizationUuid',
@@ -184,9 +193,20 @@ export class ContentService extends BaseService {
             );
         }
 
+        // Expanded before the access check, so restricted descendants drop out
+        const requestedSpaceUuids =
+            filters.includeDescendantSpaces && filters.spaceUuids?.length
+                ? [
+                      ...filters.spaceUuids,
+                      ...(await this.spaceModel.getDescendantSpaceUuidsForParents(
+                          filters.spaceUuids,
+                      )),
+                  ]
+                : filters.spaceUuids;
+
         const spaces = await this.spaceModel.find({
             projectUuids: allowedProjectUuids,
-            spaceUuids: filters.spaceUuids,
+            spaceUuids: requestedSpaceUuids,
         });
         const spaceUuids = spaces.map((p) => p.uuid);
 

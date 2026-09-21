@@ -36,6 +36,8 @@ export const spaceContentConfiguration: ContentConfiguration<SpaceContentRow> =
         shouldQueryBeIncluded: (filters: ContentFilters) => {
             // Only dashboards have owners
             if (filters.ownerUserUuids) return false;
+            // Spaces have no chart kind and cannot be verified
+            if (filters.chart?.kinds || filters.verifiedOnly) return false;
             if (filters.contentTypes?.includes(ContentType.SPACE)) {
                 return true;
             }

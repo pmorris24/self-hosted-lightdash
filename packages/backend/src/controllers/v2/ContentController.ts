@@ -9,6 +9,7 @@ import {
     ApiRestoreContentBody,
     ApiSuccessEmpty,
     assertRegisteredAccount,
+    ChartKind,
     ContentActionDelete,
     ContentActionMove,
     ContentType,
@@ -43,6 +44,10 @@ export class ContentController extends BaseController {
     /**
      * Get content (charts, dashboards, spaces)
      * @summary List content
+     * @param chartKinds Only charts of these kinds; other content types are excluded
+     * @param verifiedOnly Only verified charts and dashboards
+     * @param includeDescendantSpaces Also match content in spaces nested under `spaceUuids`
+     * @param interleaveContentTypes Order purely by `sortBy` instead of grouping by content type first
      */
     @Middlewares([allowApiKeyAuthentication, isAuthenticated])
     @SuccessResponse('200', 'Success')
@@ -64,6 +69,10 @@ export class ContentController extends BaseController {
         @Query() dataAppVizsFilter?: 'exclude' | 'only',
         @Query() ownerUserUuids?: string[],
         @Query() sharedWithMe?: boolean,
+        @Query() chartKinds?: ChartKind[],
+        @Query() verifiedOnly?: boolean,
+        @Query() includeDescendantSpaces?: boolean,
+        @Query() interleaveContentTypes?: boolean,
     ): Promise<ApiContentResponse> {
         const { user } = getAccountApiAccessContext(req.account!);
         this.setStatus(200);
@@ -81,10 +90,14 @@ export class ContentController extends BaseController {
                     dataAppVizsFilter,
                     ownerUserUuids,
                     sharedWithMe,
+                    chart: chartKinds ? { kinds: chartKinds } : undefined,
+                    verifiedOnly,
+                    includeDescendantSpaces,
                 },
                 {
                     sortBy,
                     sortDirection,
+                    interleaveContentTypes,
                 },
                 {
                     page: page || 1,

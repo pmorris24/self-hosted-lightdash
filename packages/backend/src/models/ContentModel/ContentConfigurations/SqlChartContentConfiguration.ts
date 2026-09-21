@@ -212,6 +212,32 @@ export const sqlChartContentConfiguration: ContentConfiguration<SelectSavedSql> 
                             filters.search,
                         );
                     }
+                    if (filters.chart?.kinds) {
+                        const { kinds } = filters.chart;
+                        void builder.where((kindFilter) => {
+                            void kindFilter.whereIn(
+                                `${SavedSqlTableName}.last_version_chart_kind`,
+                                kinds,
+                            );
+                            // Rows read back as VERTICAL_BAR via
+                            // coerceChartKind must match that kind here too.
+                            if (kinds.includes(ChartKind.VERTICAL_BAR)) {
+                                void kindFilter
+                                    .orWhereNotIn(
+                                        `${SavedSqlTableName}.last_version_chart_kind`,
+                                        [...VALID_CHART_KINDS],
+                                    )
+                                    .orWhereNull(
+                                        `${SavedSqlTableName}.last_version_chart_kind`,
+                                    );
+                            }
+                        });
+                    }
+                    if (filters.verifiedOnly) {
+                        void builder.whereNotNull(
+                            `${ContentVerificationTableName}.verified_at`,
+                        );
+                    }
 
                     // Exclude SQL charts in deleted spaces
                     void builder.whereNull(`${SpaceTableName}.deleted_at`);

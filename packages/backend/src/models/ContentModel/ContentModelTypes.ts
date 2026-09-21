@@ -1,5 +1,6 @@
 import {
     ChartContent,
+    ChartKind,
     ContentSortByColumns,
     ContentType,
     SummaryContentBase,
@@ -24,7 +25,19 @@ export type ContentFilters = {
     contentTypes?: ContentType[];
     chart?: {
         sources?: ChartContent['source'][];
+        /** Restrict charts to these kinds; other content types are excluded. */
+        kinds?: ChartKind[];
     };
+    /**
+     * Only verified charts and dashboards. Spaces and data apps cannot be
+     * verified, so they are excluded entirely while it is set.
+     */
+    verifiedOnly?: boolean;
+    /**
+     * Expand `spaceUuids` to every nested space beneath them. Resolved by the
+     * service before access filtering; the model only sees the expanded list.
+     */
+    includeDescendantSpaces?: boolean;
     search?: string;
     space?: {
         rootSpaces: boolean;
@@ -70,6 +83,11 @@ export type ContentFilters = {
 export type ContentArgs = {
     sortBy?: ContentSortByColumns;
     sortDirection?: 'asc' | 'desc';
+    /**
+     * Order purely by the sort column instead of grouping by content type
+     * first, so a mixed listing (e.g. charts + data apps) is interleaved.
+     */
+    interleaveContentTypes?: boolean;
 };
 
 export type SummaryContentRow<

@@ -1,4 +1,4 @@
-import { ContentType } from '@lightdash/common';
+import { ChartKind, ContentType } from '@lightdash/common';
 import knex from 'knex';
 import { MockClient } from 'knex-mock-client';
 import { ContentFilters } from '../ContentModelTypes';
@@ -73,5 +73,20 @@ describe('spaceContentConfiguration.shouldQueryBeIncluded', () => {
         expect(
             spaceContentConfiguration.shouldQueryBeIncluded({ deleted: true }),
         ).toBe(true);
+    });
+
+    it('is excluded by a chart kind or verified filter, even when spaces are requested', () => {
+        expect(
+            spaceContentConfiguration.shouldQueryBeIncluded({
+                contentTypes: [ContentType.SPACE, ContentType.CHART],
+                chart: { kinds: [ChartKind.TABLE] },
+            }),
+        ).toBe(false);
+        expect(
+            spaceContentConfiguration.shouldQueryBeIncluded({
+                contentTypes: [ContentType.SPACE],
+                verifiedOnly: true,
+            }),
+        ).toBe(false);
     });
 });

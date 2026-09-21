@@ -1,4 +1,5 @@
 import {
+    ChartKind,
     ChartSourceType,
     ContentType,
     defineUserAbility,
@@ -6,6 +7,7 @@ import {
     ForbiddenError,
     KnexPaginatedData,
     OrganizationMemberRole,
+    ParameterError,
     ProjectMemberRole,
     SpaceMemberRole,
     SummaryContent,
@@ -355,6 +357,111 @@ describe('ContentService.find', () => {
             expect.any(Object),
             expect.objectContaining({ page: 1, pageSize: 50 }),
         );
+    });
+
+    it('expands spaceUuids to descendants before the access check, so restricted children drop out', async () => {
+        const parentSpaceUuid = 'parent-space-uuid';
+        const openChildSpaceUuid = 'open-child-space-uuid';
+        const restrictedChildSpaceUuid = 'restricted-child-space-uuid';
+        const findSummaryContents = vi.fn(
+            async (): Promise<KnexPaginatedData<SummaryContent[]>> => ({
+                data: [],
+            }),
+        );
+        const getDescendantSpaceUuidsForParents = vi
+            .fn()
+            .mockResolvedValue([openChildSpaceUuid, restrictedChildSpaceUuid]);
+        const findSpaces = vi.fn(
+            async ({ spaceUuids }: { spaceUuids: string[] }) =>
+                spaceUuids.map((uuid) => ({ uuid })),
+        );
+        const getAccessibleSpaceUuids = vi.fn(
+            async (_action: string, _user: unknown, uuids: string[]) =>
+                uuids.filter((uuid) => uuid !== restrictedChildSpaceUuid),
+        );
+        const deps = createService({
+            contentModel: {
+                findSummaryContents,
+            } as unknown as ContentModel,
+            spaceModel: {
+                find: findSpaces,
+                getDescendantSpaceUuidsForParents,
+                getChildSpaceUuidsForParents: vi.fn().mockResolvedValue([]),
+            } as unknown as SpaceModel,
+            spacePermissionService: {
+                getAccessibleSpaceUuids,
+                getDirectAccessUserUuids: vi.fn(),
+            } as unknown as SpacePermissionService,
+        });
+
+        await deps.service.find(
+            createUser(),
+            {
+                projectUuids: [projectUuid],
+                contentTypes: [ContentType.CHART],
+                spaceUuids: [parentSpaceUuid],
+                includeDescendantSpaces: true,
+            },
+            {},
+            { page: 1, pageSize: 50 },
+        );
+
+        expect(getDescendantSpaceUuidsForParents).toHaveBeenCalledWith([
+            parentSpaceUuid,
+        ]);
+        expect(findSummaryContents).toHaveBeenCalledWith(
+            expect.objectContaining({
+                spaceUuids: [parentSpaceUuid, openChildSpaceUuid],
+            }),
+            expect.any(Object),
+            expect.any(Object),
+        );
+    });
+
+    it('does not look up descendants unless includeDescendantSpaces is set', async () => {
+        const getDescendantSpaceUuidsForParents = vi.fn();
+        const deps = createService({
+            contentModel: {
+                findSummaryContents: vi.fn().mockResolvedValue({ data: [] }),
+            } as unknown as ContentModel,
+            spaceModel: {
+                find: vi.fn().mockResolvedValue([{ uuid: 'space-uuid' }]),
+                getDescendantSpaceUuidsForParents,
+                getChildSpaceUuidsForParents: vi.fn().mockResolvedValue([]),
+            } as unknown as SpaceModel,
+            spacePermissionService: {
+                getAccessibleSpaceUuids: vi
+                    .fn()
+                    .mockResolvedValue(['space-uuid']),
+                getDirectAccessUserUuids: vi.fn(),
+            } as unknown as SpacePermissionService,
+        });
+
+        await deps.service.find(
+            createUser(),
+            { projectUuids: [projectUuid], spaceUuids: ['space-uuid'] },
+            {},
+            { page: 1, pageSize: 50 },
+        );
+
+        expect(getDescendantSpaceUuidsForParents).not.toHaveBeenCalled();
+    });
+
+    it('rejects chartKinds when contentTypes excludes charts', async () => {
+        const deps = createService({});
+
+        await expect(
+            deps.service.find(
+                createUser(),
+                {
+                    projectUuids: [projectUuid],
+                    contentTypes: [ContentType.DASHBOARD],
+                    chart: { kinds: [ChartKind.TABLE] },
+                },
+                {},
+                { page: 1, pageSize: 50 },
+            ),
+        ).rejects.toThrow(ParameterError);
     });
 
     // The vizs-only listing skips space scoping, so it must be gated on

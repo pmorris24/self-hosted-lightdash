@@ -25,8 +25,10 @@ import { applyContentNameSearch } from '../ContentSearchUtils';
 export const dashboardContentConfiguration: ContentConfiguration<SummaryContentRow> =
     {
         shouldQueryBeIncluded: (filters: ContentFilters) =>
-            !filters.contentTypes ||
-            filters.contentTypes?.includes(ContentType.DASHBOARD),
+            // A chart kind filter names charts only
+            !filters.chart?.kinds &&
+            (!filters.contentTypes ||
+                filters.contentTypes?.includes(ContentType.DASHBOARD)),
         getSummaryQuery: (
             knex: Knex,
             filters: ContentFilters,
@@ -249,6 +251,11 @@ export const dashboardContentConfiguration: ContentConfiguration<SummaryContentR
                             builder,
                             `${DashboardsTableName}.name`,
                             filters.search,
+                        );
+                    }
+                    if (filters.verifiedOnly) {
+                        void builder.whereNotNull(
+                            `${ContentVerificationTableName}.verified_at`,
                         );
                     }
 

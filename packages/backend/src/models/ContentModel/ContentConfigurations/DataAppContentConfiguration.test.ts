@@ -1,3 +1,4 @@
+import { ChartKind, ContentType } from '@lightdash/common';
 import knex from 'knex';
 import { MockClient } from 'knex-mock-client';
 import { ContentFilters } from '../ContentModelTypes';
@@ -54,5 +55,32 @@ describe('dataAppContentConfiguration.getSummaryQuery dataAppVizsFilter', () => 
         });
         expect(sql).toContain('"spaces"."space_uuid" in');
         expect(bindings).toContain('space-1');
+    });
+});
+
+describe('dataAppContentConfiguration.shouldQueryBeIncluded', () => {
+    it('is included when data apps are requested', () => {
+        expect(
+            dataAppContentConfiguration.shouldQueryBeIncluded({
+                contentTypes: [ContentType.CHART, ContentType.DATA_APP],
+            }),
+        ).toBe(true);
+    });
+
+    it('is excluded by a chart kind filter — data apps have no chart kind', () => {
+        expect(
+            dataAppContentConfiguration.shouldQueryBeIncluded({
+                chart: { kinds: [ChartKind.BIG_NUMBER] },
+            }),
+        ).toBe(false);
+    });
+
+    it('is excluded by verifiedOnly — data apps cannot be verified', () => {
+        expect(
+            dataAppContentConfiguration.shouldQueryBeIncluded({
+                contentTypes: [ContentType.DATA_APP],
+                verifiedOnly: true,
+            }),
+        ).toBe(false);
     });
 });
