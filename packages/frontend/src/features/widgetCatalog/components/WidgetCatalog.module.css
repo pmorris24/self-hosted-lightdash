@@ -1,0 +1,173 @@
+/* Lets the grid size itself from its own width (cqw below). */
+.gridViewport {
+    container-type: inline-size;
+}
+
+/* Always 4 columns and exactly 3 rows tall, however many widgets a tab has, so
+   the modal keeps one size. A row is a 16:9 preview plus the fixed-height meta
+   strip. More rows scroll; only a short screen makes it shorter. */
+.gridScroll {
+    --tile-gap: var(--mantine-spacing-md);
+    --tile-meta-height: 4rem;
+    --tile-row-height: calc(
+        (100cqw - 3 * var(--tile-gap)) / 4 * 0.5625 + var(--tile-meta-height)
+    );
+
+    --grid-available-height: calc(90vh - 18rem);
+
+    height: min(
+        calc(3 * var(--tile-row-height) + 2 * var(--tile-gap) + 4px),
+        var(--grid-available-height)
+    );
+}
+
+/* On a short screen, stop at the last whole row instead of cutting one in half */
+@supports (height: round(down, 10px, 3px)) {
+    .gridScroll {
+        height: min(
+            calc(3 * var(--tile-row-height) + 2 * var(--tile-gap) + 4px),
+            max(
+                calc(var(--tile-row-height) + 4px),
+                calc(
+                    round(
+                            down,
+                            calc(
+                                var(--grid-available-height) + var(--tile-gap)
+                            ),
+                            calc(var(--tile-row-height) + var(--tile-gap))
+                        ) -
+                        var(--tile-gap) + 4px
+                )
+            )
+        );
+    }
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* Without this a fixed-height grid squeezes its rows to fit more in */
+    grid-auto-rows: max-content;
+    align-content: start;
+    gap: var(--tile-gap);
+    /* Room for the focus outline, which sits outside the tile's box. */
+    padding: 2px;
+}
+
+.gridMessage {
+    grid-column: 1 / -1;
+}
+
+.tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    transition: border-color 120ms ease;
+}
+
+.tile:hover {
+    border-color: var(--mantine-color-ldGray-3);
+}
+
+.tile:focus-visible {
+    outline: 2px solid var(--mantine-primary-color-filled);
+    outline-offset: 1px;
+}
+
+.tile[data-selected='true'] {
+    border-color: var(--mantine-primary-color-filled);
+    box-shadow: 0 0 0 1px var(--mantine-primary-color-filled);
+}
+
+.tile[data-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.preview {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-bottom: 1px solid var(--mantine-color-default-border);
+    /* The same surface a dashboard tile has, so a chart looks as it will there */
+    background-color: var(--mantine-color-body);
+    /* Its size comes from aspect-ratio, not its content, so the browser can
+       skip painting off-screen previews without any layout shift. */
+    content-visibility: auto;
+    contain: layout paint;
+}
+
+/* The chart is drawn larger than the card, then shrunk to a thumbnail. */
+.previewScaler {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* 2x, not more: the painted area is what makes previews slow to draw and
+       laggy to scroll. */
+    width: 200%;
+    height: 200%;
+    transform: translate(-50%, -50%) scale(0.5);
+    pointer-events: none;
+}
+
+.previewScaler[data-kpi='true'] {
+    width: 143%;
+    height: 143%;
+    transform: translate(-50%, -50%) scale(0.7);
+}
+
+/* App thumbnails are already a picture; they fill the box unscaled. */
+.appThumbnail {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+}
+
+.addButton {
+    position: absolute;
+    top: var(--mantine-spacing-xs);
+    right: var(--mantine-spacing-xs);
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.selectBox {
+    position: absolute;
+    top: var(--mantine-spacing-xs);
+    left: var(--mantine-spacing-xs);
+    opacity: 0;
+    transition: opacity 120ms ease;
+    pointer-events: none;
+}
+
+.tile:hover .addButton,
+.tile:focus-within .addButton,
+.tile:hover .selectBox,
+.tile:focus-visible .selectBox,
+.tile[data-selected='true'] .selectBox {
+    opacity: 1;
+}
+
+.meta {
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-sm);
+    height: var(--tile-meta-height);
+    padding: 0 var(--mantine-spacing-sm);
+    /* The muted fill sets the label apart from the chart above it */
+    background-color: var(--mantine-color-ldGray-1);
+}
+
+.metaText {
+    flex: 1;
+    min-width: 0;
+}
+
+.spacePicker {
+    max-height: 320px;
+    overflow-y: auto;
+}

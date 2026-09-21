@@ -1,8 +1,19 @@
 import { InvalidUser, PaginationError, type ApiError } from '@lightdash/common';
 import { captureException } from '@sentry/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+    type Dispatch,
+    type SetStateAction,
+} from 'react';
 import useToaster from './toaster/useToaster';
+
+// Set to true around a subtree that reports query errors inline (e.g. chart
+// thumbnails), so a broken chart there doesn't raise a global toast.
+export const SuppressQueryErrorToastsContext = createContext(false);
 
 type opts = {
     forbiddenToastTitle?: string;
@@ -18,6 +29,7 @@ const useQueryError = ({
     const queryClient = useQueryClient();
     const [errorResponse, setErrorResponse] = useState<ApiError | undefined>();
     const { showToastError, addToastError } = useToaster();
+    const suppressToasts = useContext(SuppressQueryErrorToastsContext);
     useEffect(() => {
         void (async function doIfError() {
             const { error } = errorResponse || {};
@@ -30,7 +42,7 @@ const useQueryError = ({
                     // So don't show the error popup there,
                     // we will handle this on pages showing a nice message
 
-                    if (forceToastOnForbidden) {
+                    if (forceToastOnForbidden && !suppressToasts) {
                         addToastError({
                             title: forbiddenToastTitle ?? 'Forbidden',
                             apiError: error,
@@ -49,6 +61,7 @@ const useQueryError = ({
                         tags: { errorType: 'validationError' },
                         extra: { data: error.data },
                     });
+                    if (suppressToasts) return;
                     try {
                         const validationData = error.data as unknown as Record<
                             string,
@@ -72,7 +85,7 @@ const useQueryError = ({
                     if (window.location.pathname !== '/login') {
                         window.location.href = '/login';
                     }
-                } else {
+                } else if (!suppressToasts) {
                     addToastError({
                         title: chartName
                             ? `Chart '${chartName}': Error`
@@ -90,6 +103,7 @@ const useQueryError = ({
         queryClient,
         showToastError,
         addToastError,
+        suppressToasts,
     ]);
     return setErrorResponse;
 };

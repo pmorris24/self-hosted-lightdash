@@ -57,6 +57,8 @@ import {
     RequestReviewModal,
     useContentReviewEligibility,
 } from '../../../ee/features/contentReview';
+import EmbedCodeModal from '../../../ee/features/embed/EmbedCode/EmbedCodeModal';
+import { useCanShowEmbedCode } from '../../../ee/features/embed/EmbedCode/useCanShowEmbedCode';
 import DashboardAsCodeModal from '../../../features/contentAsCode/components/DashboardAsCodeModal';
 import {
     DirectAccessModal,
@@ -70,6 +72,7 @@ import {
 } from '../../../features/promotion/hooks/usePromoteDashboard';
 import { DashboardSchedulersModal } from '../../../features/scheduler';
 import { getSchedulerUuidFromUrlParams } from '../../../features/scheduler/utils';
+import WidgetCatalogButton from '../../../features/widgetCatalog/components/WidgetCatalogButton';
 import useDashboardPerformanceWarning from '../../../hooks/dashboard/useDashboardPerformanceWarning';
 import { useFavoriteMutation } from '../../../hooks/favorites/useFavoriteMutation';
 import { useFavorites } from '../../../hooks/favorites/useFavorites';
@@ -213,6 +216,8 @@ const DashboardHeader = memo(
             useDisclosure(false);
         const [isDashboardAsCodeModalOpen, dashboardAsCodeModalHandlers] =
             useDisclosure(false);
+        const [isEmbedCodeOpen, embedCodeHandlers] = useDisclosure(false);
+        const canShowEmbedCode = useCanShowEmbedCode(projectUuid);
 
         const uniquePreAggregateNames = useMemo(() => {
             if (!preAggregateStatuses) return [];
@@ -621,6 +626,13 @@ const DashboardHeader = memo(
                                 </ActionIcon>
                             </Tooltip>
                         )}
+
+                        <WidgetCatalogButton
+                            onAddTiles={onAddTiles}
+                            disabled={isSaving}
+                            activeTabUuid={activeTabUuid}
+                            radius="md"
+                        />
 
                         <AddTileButton
                             onAddTiles={onAddTiles}
@@ -1089,6 +1101,17 @@ const DashboardHeader = memo(
                                         </Menu.Item>
                                     )}
 
+                                    {canShowEmbedCode && (
+                                        <Menu.Item
+                                            leftSection={
+                                                <MantineIcon icon={IconCode} />
+                                            }
+                                            onClick={embedCodeHandlers.open}
+                                        >
+                                            Embed code
+                                        </Menu.Item>
+                                    )}
+
                                     {userCanViewContentAsCode && (
                                         <>
                                             <Menu.Divider />
@@ -1154,6 +1177,17 @@ const DashboardHeader = memo(
                                     toggleScheduledDeliveriesModal(false)
                                 }
                                 initialSchedulerUuid={initialSchedulerUuid}
+                            />
+                        )}
+                        {isEmbedCodeOpen && projectUuid && (
+                            <EmbedCodeModal
+                                projectUuid={projectUuid}
+                                target={{
+                                    type: 'dashboard',
+                                    uuid: dashboard.uuid,
+                                    name: dashboard.name,
+                                }}
+                                onClose={embedCodeHandlers.close}
                             />
                         )}
                         {projectUuid && (

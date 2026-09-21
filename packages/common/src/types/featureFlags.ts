@@ -89,6 +89,13 @@ export enum FeatureFlags {
      * is true. Disabled by default.
      */
     EnableDataApps = 'enable-data-apps',
+
+    /**
+     * Show the widget catalog in the dashboard edit header: a browsable
+     * library of saved charts and data apps to add as tiles. UI only — it
+     * reads the generic content API. Per organization; disabled by default.
+     */
+    WidgetCatalog = 'widget-catalog',
     // Enable the Learn library, walkthroughs and training project per org.
     EnableLearn = 'enable-learn',
 

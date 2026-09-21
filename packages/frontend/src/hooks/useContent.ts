@@ -6,6 +6,7 @@ import {
     type ApiContentResponse,
     type ApiError,
     type ApiSuccessEmpty,
+    type ChartKind,
     type ContentSortByColumns,
 } from '@lightdash/common';
 import { IconArrowRight } from '@tabler/icons-react';
@@ -41,6 +42,14 @@ export type ContentArgs = {
     ownerUserUuids?: string[];
     // Only resources directly granted to the caller or their groups.
     sharedWithMe?: boolean;
+    // Only charts of these kinds (other content types are excluded)
+    chartKinds?: ChartKind[];
+    // Only verified charts and dashboards
+    verifiedOnly?: boolean;
+    // Also match content in spaces nested under `spaceUuids`
+    includeDescendantSpaces?: boolean;
+    // Order purely by `sortBy` instead of grouping by content type first
+    interleaveContentTypes?: boolean;
 };
 
 const contentTypeLabel = (contentType: ContentType): string =>

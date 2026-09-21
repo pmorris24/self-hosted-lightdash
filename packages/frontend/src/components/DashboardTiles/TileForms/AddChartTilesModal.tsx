@@ -1,9 +1,6 @@
 import {
-    assertUnreachable,
     ChartKind,
-    ChartSourceType,
     DashboardTileTypes,
-    defaultTileSize,
     type ChartContent,
     type Dashboard,
 } from '@lightdash/common';
@@ -29,13 +26,13 @@ import React, {
     useState,
     type FC,
 } from 'react';
-import { v4 as uuid4 } from 'uuid';
 import { useChartSummariesV2 } from '../../../hooks/useChartSummariesV2';
 import { useProjectUuid } from '../../../hooks/useProjectUuid';
 import useDashboardContext from '../../../providers/Dashboard/useDashboardContext';
 import MantineModal from '../../common/MantineModal';
 import { MultiSelectCombobox } from '../../common/MultiSelectCombobox/MultiSelectCombobox';
 import { ChartIcon } from '../../common/ResourceIcon';
+import { buildChartTile } from './utils';
 
 type Props = {
     onAddTiles: (
@@ -206,48 +203,14 @@ const AddChartTilesModal: FC<Props> = ({
 
     const handleSubmit = form.onSubmit(({ savedChartsUuids }) => {
         onAddTiles(
-            savedChartsUuids.map((uuid) => {
-                const chart = savedQueries?.find((c) => c.uuid === uuid);
-                const sourceType = chart?.source;
-
-                switch (sourceType) {
-                    case ChartSourceType.SQL:
-                        return {
-                            uuid: uuid4(),
-                            type: DashboardTileTypes.SQL_CHART,
-                            properties: {
-                                savedSqlUuid: uuid,
-                                chartName: chart?.name ?? '',
-                            },
-                            tabUuid: undefined,
-                            ...defaultTileSize,
-                        };
-
-                    case undefined:
-                    case ChartSourceType.DBT_EXPLORE:
-                        return {
-                            uuid: uuid4(),
-                            type: DashboardTileTypes.SAVED_CHART,
-                            properties: {
-                                savedChartUuid: uuid,
-                                chartName: chart?.name ?? '',
-                                // BigNumber charts default to hidden title for cleaner appearance
-                                hideTitle:
-                                    chart?.chartKind === ChartKind.BIG_NUMBER
-                                        ? true
-                                        : undefined,
-                            },
-                            tabUuid: undefined,
-                            ...defaultTileSize,
-                        };
-
-                    default:
-                        return assertUnreachable(
-                            sourceType,
-                            `Unknown chart source type: ${sourceType}`,
-                        );
-                }
-            }),
+            savedQueries
+                .filter((chart) => savedChartsUuids.includes(chart.uuid))
+                .sort(
+                    (a, b) =>
+                        savedChartsUuids.indexOf(a.uuid) -
+                        savedChartsUuids.indexOf(b.uuid),
+                )
+                .map(buildChartTile),
         );
         onClose();
     });
