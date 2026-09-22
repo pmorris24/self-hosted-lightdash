@@ -1610,10 +1610,13 @@ const RowsDataChart: FC<RowsDataChartProps> = ({
     );
     // The renderer reads its config once, on mount. Rows that arrive later
     // can add series (`breakBy`), so a new set of fields remounts it.
+    // The renderer reads its config once, on mount, so anything that changes
+    // the config has to change the key: the type, the style, and every data
+    // option, including stacking, per-series types and the axis split.
     const configKey = [
         chartType,
-        chartDataOptions.category ?? '',
         styleKey,
+        JSON.stringify(chartDataOptions),
         ...valueColumns,
     ].join('\u0000');
     return (
