@@ -307,7 +307,9 @@ export function createEmbedFetchAdapter(
         useProxy: options.useProxy ?? false,
         headers: {
             [EMBED_JWT_HEADER_NAME]: options.embedToken,
-            [APP_UUID_HEADER_NAME]: options.appUuid,
+            ...(options.appUuid
+                ? { [APP_UUID_HEADER_NAME]: options.appUuid }
+                : {}),
         },
         resolvePath: (method, path) =>
             method.toUpperCase() === 'GET' && path === '/api/v1/user'
@@ -324,6 +326,16 @@ export function createEmbedExternalFetch(
     options: EmbedClientOptions,
     fetchFn: FetchAdapter,
 ): Transport['externalFetch'] {
+    // External connections belong to a data app. A chart or dashboard token
+    // has none, so say that instead of calling a path with no app in it.
+    if (!options.appUuid) {
+        return () =>
+            Promise.reject(
+                new Error(
+                    'External connections need a data app: pass appUuid to createEmbedClient.',
+                ),
+            );
+    }
     const path = `/api/v1/ee/projects/${options.projectUuid}/apps/${options.appUuid}/external-fetch`;
     return (alias, opts) =>
         fetchFn<ExternalFetchResult>('POST', path, {
@@ -856,9 +868,19 @@ function mapApiRowsToQueryResult({
  * @param adapter - Optional custom fetch adapter. When omitted, uses the default
  *   adapter that authenticates via `Authorization: ApiKey` header.
  */
+export type ApiTransportOptions = {
+    /**
+     * The adapter that runs one saved chart, when it differs from the
+     * transport's own: an embed client holding a project token exchanges it
+     * for a chart token per chart, and runs and polls the chart with that.
+     */
+    savedChartAdapter?: (chartUuid: string) => Promise<FetchAdapter>;
+};
+
 export function createApiTransport(
     config: LightdashClientConfig,
     adapter?: FetchAdapter,
+    options?: ApiTransportOptions,
 ): Transport {
     const fetchFn = adapter ?? createDefaultFetchAdapter(config);
 
@@ -1037,6 +1059,10 @@ export function createApiTransport(
             parameters?: ParametersValuesMap;
             filters?: InternalFilterDefinition[];
         }): Promise<QueryResult> {
+            // A project token cannot run a chart: swap in the chart's adapter.
+            const chartFetch = options?.savedChartAdapter
+                ? await options.savedChartAdapter(params.chartUuid)
+                : fetchFn;
             const metadata = params.label ? { label: params.label } : undefined;
             const buildChartBody = (limitOverride?: number) => {
                 const body: Record<string, unknown> = {
@@ -1055,7 +1081,7 @@ export function createApiTransport(
                 }
                 return body;
             };
-            const execResult = await fetchFn<AsyncQueryResponse>(
+            const execResult = await chartFetch<AsyncQueryResponse>(
                 'POST',
                 `/api/v2/projects/${config.projectUuid}/query/chart`,
                 buildChartBody(),
@@ -1067,7 +1093,7 @@ export function createApiTransport(
                 };
 
             const { firstReadyPage, apiRows } = await pollQueryRows(
-                fetchFn,
+                chartFetch,
                 config.projectUuid,
                 queryUuid,
             );
@@ -1104,7 +1130,7 @@ export function createApiTransport(
                         `Cannot fetch underlying data for "${options.metric}" because it is not a metric in the linked chart.`,
                     );
                 }
-                return fetchFn<AsyncQueryResponse>(
+                return chartFetch<AsyncQueryResponse>(
                     'POST',
                     `/api/v2/projects/${config.projectUuid}/query/underlying-data`,
                     buildSavedChartUnderlyingDataBody({
@@ -1129,7 +1155,7 @@ export function createApiTransport(
                     firstReadyPage: underlyingFirstReadyPage,
                     apiRows: underlyingApiRows,
                 } = await pollQueryRows(
-                    fetchFn,
+                    chartFetch,
                     config.projectUuid,
                     underlyingExecResult.queryUuid,
                 );
@@ -1159,13 +1185,13 @@ export function createApiTransport(
                     getUnderlyingDownloadLimit(options.limit),
                 );
                 await pollQueryReady(
-                    fetchFn,
+                    chartFetch,
                     config.projectUuid,
                     underlyingExecResult.queryUuid,
                     1,
                 );
                 return scheduleDownloadForQuery({
-                    fetchFn,
+                    fetchFn: chartFetch,
                     projectUuid: config.projectUuid,
                     queryUuid: underlyingExecResult.queryUuid,
                     options,
@@ -1179,14 +1205,14 @@ export function createApiTransport(
                 let downloadQueryUuid = queryUuid;
 
                 if (downloadLimit.kind === 'rerun') {
-                    const rerun = await fetchFn<AsyncQueryResponse>(
+                    const rerun = await chartFetch<AsyncQueryResponse>(
                         'POST',
                         `/api/v2/projects/${config.projectUuid}/query/chart`,
                         buildChartBody(downloadLimit.limit),
                         metadata,
                     );
                     await pollQueryReady(
-                        fetchFn,
+                        chartFetch,
                         config.projectUuid,
                         rerun.queryUuid,
                         1,
@@ -1195,7 +1221,7 @@ export function createApiTransport(
                 }
 
                 return scheduleDownloadForQuery({
-                    fetchFn,
+                    fetchFn: chartFetch,
                     projectUuid: config.projectUuid,
                     queryUuid: downloadQueryUuid,
                     options,

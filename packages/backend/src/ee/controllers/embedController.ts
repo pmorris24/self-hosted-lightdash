@@ -25,6 +25,8 @@ import {
     DateGranularity,
     DateZoom,
     DecodedEmbed,
+    EmbedContentToken,
+    EmbedContentTokenRequest,
     EmbedUrl,
     ExecuteAsyncDashboardChartRequestParams,
     ExecuteAsyncDashboardSqlChartRequestParams,
@@ -94,6 +96,11 @@ export type ApiEmbedDashboardAvailableFiltersResponse = {
 export type ApiEmbedUrlResponse = {
     status: 'ok';
     results: EmbedUrl;
+};
+
+export type ApiEmbedContentTokenResponse = {
+    status: 'ok';
+    results: EmbedContentToken;
 };
 
 export type ApiEmbedConfigResponse = {
@@ -238,6 +245,31 @@ export class EmbedController extends BaseController {
         return {
             status: 'ok',
             results: await this.getEmbedService().getEmbedUrl(
+                req.account,
+                projectUuid,
+                body,
+            ),
+        };
+    }
+
+    /**
+     * Exchanges a project token for a dashboard or chart token of the same
+     * viewer. The content must be allowed by the project's embed settings.
+     * @summary Exchange a project token for a content token
+     */
+    @SuccessResponse('200', 'Success')
+    @Post('/content-token')
+    @OperationId('getEmbedContentToken')
+    async getEmbedContentToken(
+        @Request() req: express.Request,
+        @Path() projectUuid: string,
+        @Body() body: EmbedContentTokenRequest,
+    ): Promise<ApiEmbedContentTokenResponse> {
+        this.setStatus(200);
+        assertEmbeddedAuth(req.account);
+        return {
+            status: 'ok',
+            results: await this.getEmbedService().getContentToken(
                 req.account,
                 projectUuid,
                 body,

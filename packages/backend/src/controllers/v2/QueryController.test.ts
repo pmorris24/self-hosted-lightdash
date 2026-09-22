@@ -127,4 +127,57 @@ describe('QueryController', () => {
             }),
         );
     });
+
+    describe('saved chart query with an embed token', () => {
+        const runWithContentType = async (contentType: string) => {
+            const executeAsyncSavedChartQuery = vi
+                .fn()
+                .mockResolvedValue({ queryUuid: 'query-uuid' });
+            const controller = new QueryController({
+                getAsyncQueryService: () => ({ executeAsyncSavedChartQuery }),
+            } as unknown as ConstructorParameters<typeof QueryController>[0]);
+            controller.setStatus = vi.fn();
+            const req = {
+                account: {
+                    isJwtUser: () => true,
+                    access: { content: { type: contentType } },
+                },
+                headers: {},
+                header: vi.fn(),
+            } as unknown as express.Request;
+
+            const result = controller.executeAsyncSavedChartQuery(
+                { chartUuid: 'chart-uuid' },
+                'project-uuid',
+                req,
+            );
+            return { result, executeAsyncSavedChartQuery };
+        };
+
+        it.each(['chart', 'dashboard'])(
+            'lets a %s token reach the service, which checks the chart',
+            async (contentType) => {
+                const { result, executeAsyncSavedChartQuery } =
+                    await runWithContentType(contentType);
+
+                await expect(result).resolves.toBeDefined();
+                expect(executeAsyncSavedChartQuery).toHaveBeenCalledWith(
+                    expect.objectContaining({ chartUuid: 'chart-uuid' }),
+                );
+            },
+        );
+
+        it.each(['dataApp', 'aiAgent', 'metricsCatalog'])(
+            'rejects a %s token',
+            async (contentType) => {
+                const { result, executeAsyncSavedChartQuery } =
+                    await runWithContentType(contentType);
+
+                await expect(result).rejects.toThrow(
+                    'Feature not available for this JWT',
+                );
+                expect(executeAsyncSavedChartQuery).not.toHaveBeenCalled();
+            },
+        );
+    });
 });

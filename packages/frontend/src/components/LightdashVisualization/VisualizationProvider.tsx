@@ -43,6 +43,7 @@ import { useServerFeatureFlag } from '../../hooks/useServerOrClientFeatureFlag';
 import { type EChartsReact } from '../EChartsReactWrapper';
 import { type EchartsSeriesClickEvent } from '../SimpleChart';
 import Context, {
+    type DataPointSelection,
     type EmbeddedDashboardInteractivity,
     type SavedChartReference,
 } from './context';
@@ -77,6 +78,7 @@ export type VisualizationProviderProps = {
         e: EchartsSeriesClickEvent,
         series: EChartsSeries[],
     ) => void;
+    onDataPointSelect?: (point: DataPointSelection) => void;
     onChartTypeChange?: (value: ChartType) => void;
     onChartConfigChange?: (value: ChartConfig) => void;
     onPivotDimensionsChange?: (value: string[] | undefined) => void;
@@ -111,6 +113,7 @@ const VisualizationProvider: FC<
     chartConfig,
     onChartConfigChange,
     onSeriesContextMenu,
+    onDataPointSelect,
     onChartTypeChange,
     onPivotDimensionsChange,
     onPivotRowsChange,
@@ -349,6 +352,7 @@ const VisualizationProvider: FC<
         setStacking,
         setCartesianType,
         onSeriesContextMenu,
+        onDataPointSelect,
         setChartType,
         setPivotDimensions,
         colorPalette,

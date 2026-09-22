@@ -32,6 +32,7 @@ import { downloadHandler, uploadHandler } from './handlers/download';
 import { exportChartImageHandler } from './handlers/exportChartImage';
 import { generateHandler } from './handlers/generate';
 import { generateExposuresHandler } from './handlers/generateExposures';
+import { generateTypesHandler } from './handlers/generateTypes';
 import { getProjectHandler } from './handlers/getProject';
 import {
     getVersionWithSkills,
@@ -177,6 +178,9 @@ ${styles.bold('Examples:')}
   )}
   ${styles.title('⚡')}️lightdash ${styles.bold('compile')} ${styles.secondary(
       '-- compiles Lightdash metrics and dimensions',
+  )}
+  ${styles.title('⚡')}️lightdash ${styles.bold('generate-types')} ${styles.secondary(
+      '-- writes a TypeScript file with the field ids of every explore',
   )}
   ${styles.title('⚡')}️lightdash ${styles.bold('deploy')} ${styles.secondary(
       '-- compiles and deploys Lightdash metrics to active project',
@@ -1655,6 +1659,118 @@ program
     .requiredOption('--from <slug>', 'current content slug')
     .requiredOption('--to <slug>', 'new content slug')
     .action(slugUpdateHandler);
+
+program
+    .command('generate-types')
+    .description(
+        'Writes a TypeScript file with the field ids of every explore, for the SDK',
+    )
+    .addHelpText(
+        'after',
+        `
+${styles.bold('Examples:')}
+  ${styles.title('⚡')}️lightdash ${styles.bold(
+      'generate-types',
+  )} ${styles.secondary('-- writes ./lightdash-model.ts from the compiled project')}
+  ${styles.title('⚡')}️lightdash ${styles.bold(
+      'generate-types',
+  )} --output src/lightdash-model.ts ${styles.secondary(
+      '-- writes the file where your app imports it',
+  )}
+`,
+    )
+    .option(
+        '--output <path>',
+        'The TypeScript file to write',
+        'lightdash-model.ts',
+    )
+    .option(
+        '--project-dir <path>',
+        'The directory of the dbt project',
+        defaultProjectDir,
+    )
+    .option(
+        '--profiles-dir <path>',
+        'The directory of the dbt profiles',
+        defaultProfilesDir,
+    )
+    .option(
+        '--profile <name>',
+        'The name of the profile to use (defaults to profile name in dbt_project.yml)',
+        undefined,
+    )
+    .option('--target <name>', 'target to use in profiles.yml file', undefined)
+    .option(
+        '--target-path <path>',
+        'The target directory for dbt (overrides DBT_TARGET_PATH and dbt_project.yml)',
+        undefined,
+    )
+    .option('--vars <vars>')
+    .option('--threads <number>')
+    .option('--no-version-check')
+    .option(
+        '-s, --select <models...>',
+        'specify models (accepts dbt selection syntax)',
+    )
+    .option(
+        '-m, --models <models...>',
+        'specify models (accepts dbt selection syntax)',
+    )
+    .option('--exclude <models...>')
+    .option('--selector <selector_name>')
+    .option('--state <state>')
+    .option('--full-refresh')
+    .option('--verbose', undefined, false)
+    .option(
+        '--skip-warehouse-catalog',
+        'Skip fetch warehouse catalog and use types in yml',
+        false,
+    )
+    .option(
+        '--skip-dbt-compile',
+        'Skip `dbt compile` and deploy from the existing ./target/manifest.json',
+        false,
+    )
+    .option(
+        '--defer',
+        'dbt property. Resolve unselected nodes by deferring to the manifest within the --state directory.',
+        undefined,
+    )
+    .option(
+        '--no-defer',
+        'dbt property. Do not resolve unselected nodes by deferring to the manifest within the --state directory.',
+        undefined,
+    )
+    .option(
+        '--favor-state',
+        'dbt property. When deferring, prioritize node definitions from the --state directory.',
+        undefined,
+    )
+    .option(
+        '--no-warehouse-credentials',
+        'Compile without any warehouse credentials. Skips dbt compile + warehouse catalog',
+    )
+    .option(
+        '--use-dbt-list [true|false]',
+        'Use `dbt list` instead of `dbt compile` to generate dbt manifest.json',
+        parseUseDbtListOption,
+        true,
+    )
+    .option(
+        '--disable-timestamp-conversion [true|false]',
+        'Disable timestamp conversion to UTC for Snowflake warehouses. Only use this if your timestamp values are already in UTC.',
+        parseDisableTimestampConversionOption,
+    )
+    .option(
+        '--validate-warehouse-columns',
+        validateWarehouseColumnsDescription,
+        false,
+    )
+    .option(
+        '--no-partial-compilation',
+        'Fail when a field or join cannot be compiled instead of returning a partial explore',
+    )
+    .action(generateTypesHandler);
 
 program
     .command('generate-exposures')

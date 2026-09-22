@@ -363,6 +363,41 @@ const aiAgentTypeAbilities = [aiAgentAbilities];
 
 const metricsCatalogTypeAbilities = [metricsCatalogAbilities];
 
+// A project token may query the explores of the content the embed settings
+// allow. When the settings allow everything, so does the token; otherwise the
+// explores were resolved from the allowed charts and dashboards. Reading a
+// dashboard or chart needs a content token exchanged from this one.
+const projectAbilities: EmbeddedAbilityBuilder = ({
+    embedUser,
+    content,
+    embed,
+    externalId,
+    builder,
+}) => {
+    const { organization } = embed;
+    const { can } = builder;
+    const exploreNames =
+        embed.allowAllCharts || embed.allowAllDashboards
+            ? undefined
+            : { $all: content.explores };
+
+    can('view', 'Project', {
+        organizationUuid: organization.organizationUuid,
+        projectUuid: embed.projectUuid,
+        ...(exploreNames ? { exploreNames } : {}),
+    });
+
+    can('view', 'Explore', {
+        organizationUuid: organization.organizationUuid,
+        projectUuid: embed.projectUuid,
+        ...(exploreNames ? { exploreNames } : {}),
+    });
+
+    return { embedUser, content, embed, builder, externalId };
+};
+
+const projectTypeAbilities: EmbeddedAbilityBuilder[] = [projectAbilities];
+
 const getEmbeddedAbilitiesForType = (
     type: EmbedContent['type'],
 ): EmbeddedAbilityBuilder[] => {
@@ -377,6 +412,8 @@ const getEmbeddedAbilitiesForType = (
             return metricsCatalogTypeAbilities;
         case 'apiAccess':
             return [];
+        case 'project':
+            return projectTypeAbilities;
         case 'dashboard':
             return dashboardTypeAbilities;
         default:

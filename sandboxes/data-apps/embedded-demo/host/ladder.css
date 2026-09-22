@@ -1,0 +1,14 @@
+/* This file loads before host.css; selectors carry .proposal-app where they must win. */
+.ladder-status{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:5px 10px;border:1px solid var(--ui-rail);border-radius:999px;font-size:12px;color:var(--ui-muted)}
+.ladder-status i{width:7px;height:7px;border-radius:50%;background:var(--ui-purple)}
+.ladder-status[data-released] i{background:var(--ui-good)}
+.proposal-app .ladder-step{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;margin:64px 0 32px;padding-top:48px;border-top:1px dashed var(--ui-rail)}
+.proposal-app .ladder-step h2{font-size:36px;line-height:1.1;letter-spacing:-.8px;margin-top:12px}
+.proposal-app .ladder-step .section-kicker{font-size:12px;color:var(--ui-purple)}
+.ladder-step-lead p{font-size:15px;line-height:1.7;color:var(--ui-muted);max-width:600px}
+.ladder-step-lead p+p{margin-top:12px}
+.ladder-step-lead b{color:var(--ui-text);font-weight:600}
+.ladder-intro-status{margin-top:14px}
+@media(max-width:950px){.proposal-app .ladder-step{grid-template-columns:1fr;gap:16px;margin-top:48px;padding-top:36px}.proposal-app .ladder-step h2{font-size:30px}}
+.iframe-tab code{font:.92em ui-monospace,SFMono-Regular,monospace;color:var(--ui-purple)}
+.iframe-tab .sdk-argument h2{font-size:28px;line-height:1.15;letter-spacing:-.5px;margin-top:12px}

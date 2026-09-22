@@ -1,0 +1,12 @@
+import { build } from 'esbuild';
+import { mkdir, readFile, writeFile, cp } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+const directory='/private/tmp/lightdash-react-host-audit';
+await mkdir(directory,{recursive:true});
+const result=await build({stdin:{contents:`import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import {App} from './host/App.jsx'; process.stdout.write(renderToStaticMarkup(React.createElement(App)));`,resolveDir:process.cwd(),loader:'jsx'},bundle:true,platform:'node',format:'cjs',write:false,loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},logLevel:'silent'});
+await writeFile(`${directory}/render.cjs`,result.outputFiles[0].text);
+const markup=execFileSync(process.execPath,[`${directory}/render.cjs`],{encoding:'utf8'});
+const css=(await Promise.all(['host/workflow.css','host/proof.css','host/host.css','host/brand-refinement.css','host/narrative.css','host/proposal-tabs.css'].map(file=>readFile(file,'utf8')))).join('\n').replaceAll("url('/assets/","url('assets/");
+await cp('public/assets',`${directory}/assets`,{recursive:true});
+await writeFile(`${directory}/index.html`,`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lightdash native host review</title><style>${css}</style></head><body>${markup.replaceAll('src="/assets/','src="assets/').replace(/(<code[^>]*>)([\s\S]*?)(<\/code>)/g,(_,start,code,end)=>start+code.replaceAll('{','&#123;').replaceAll('}','&#125;')+end)}</body></html>`);
+console.log(`${directory}/index.html`);

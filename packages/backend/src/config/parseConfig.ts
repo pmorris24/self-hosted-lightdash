@@ -3616,7 +3616,14 @@ export const parseConfig = (): LightdashConfig => {
                             'EMBED_EVENT_RATE_LIMIT_WINDOW_MS',
                         ) || 1000,
                 },
-                allowedOrigins: iframeAllowedDomains,
+                allowedOrigins: [
+                    ...new Set([
+                        ...iframeAllowedDomains,
+                        ...getArrayFromCommaSeparatedList(
+                            'EMBED_EVENT_SYSTEM_ALLOWED_ORIGINS',
+                        ),
+                    ]),
+                ],
                 enablePostMessage:
                     process.env.EMBED_EVENT_SYSTEM_POST_MESSAGE_ENABLED ===
                     'true',

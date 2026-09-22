@@ -1893,6 +1893,7 @@ const DashboardChartTileMain: FC<DashboardChartTileMainProps> = memo(
                             type: 'chart',
                             uuid: chart.uuid,
                             name: chart.name,
+                            spaceUuid: chart.spaceUuid ?? null,
                         }}
                         onClose={() => setIsEmbedCodeOpen(false)}
                     />

@@ -297,15 +297,26 @@ export type LightdashClientConfig = {
     useProxy?: boolean;
 };
 
-/** Options for an app bundle running in a customer's own frontend. */
+/**
+ * Options for code running in a customer's own frontend: a data app bundle,
+ * or a host page that queries with a chart or dashboard embed token.
+ */
 export type EmbedClientOptions = {
     /** Lightdash instance URL */
     baseUrl: string;
     /** Project UUID the embed token was minted for */
     projectUuid: string;
-    /** Data app UUID the embed token was minted for */
-    appUuid: string;
-    /** Short-lived embed JWT minted by the customer's backend */
+    /**
+     * Data app UUID, when the embed token was minted for a data app. Leave it
+     * out for a chart or dashboard token: those can run `savedChart()` for the
+     * charts they may read, and have no app to make external requests through.
+     */
+    appUuid?: string;
+    /**
+     * Short-lived embed JWT minted by the customer's backend. A project token
+     * works too: `model()` queries run on it, and `savedChart()` exchanges it
+     * for the token of each chart it runs.
+     */
     embedToken: string;
     /** Use relative /api paths instead of baseUrl (for same-origin proxy setups) */
     useProxy?: boolean;

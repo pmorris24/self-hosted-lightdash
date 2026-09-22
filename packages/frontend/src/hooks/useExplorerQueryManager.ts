@@ -1,6 +1,8 @@
 import { getMissingRequiredParameters, type FieldId } from '@lightdash/common';
 import { useCallback, useMemo } from 'react';
 import { useParams } from 'react-router';
+import { type SdkFilter } from '../ee/features/embed/EmbedDashboard/types';
+import { convertSdkFilterToDashboardFilter } from '../ee/features/embed/EmbedDashboard/utils';
 import useEmbed from '../ee/providers/Embed/useEmbed';
 import {
     explorerActions,
@@ -85,9 +87,33 @@ export const useExplorerQueryManager = ({
         params.savedQueryUuid;
     const projectUuid =
         explicitProjectUuid || embed?.projectUuid || routeProjectUuid!;
+    // A host page can filter an embedded chart. Keyed on the filter values, so
+    // a new array with the same content does not start a new query.
+    const embeddedChartFiltersKey =
+        embed?.savedQueryUuid && embed.filters?.length
+            ? JSON.stringify(embed.filters)
+            : undefined;
     const viewModeQueryArgs = useMemo(() => {
-        return savedQueryUuid ? { chartUuid: savedQueryUuid } : undefined;
-    }, [savedQueryUuid]);
+        if (!savedQueryUuid) return undefined;
+        if (!embeddedChartFiltersKey) return { chartUuid: savedQueryUuid };
+        let sdkFilters: SdkFilter[] = [];
+        try {
+            sdkFilters = JSON.parse(embeddedChartFiltersKey);
+        } catch {
+            return { chartUuid: savedQueryUuid };
+        }
+        return {
+            chartUuid: savedQueryUuid,
+            dashboardFilters: {
+                dimensions: sdkFilters.map((filter, index) => ({
+                    ...convertSdkFilterToDashboardFilter(filter),
+                    id: `sdk-filter-${index}`,
+                })),
+                metrics: [],
+                tableCalculations: [],
+            },
+        };
+    }, [savedQueryUuid, embeddedChartFiltersKey]);
 
     const dateZoomGranularity = useDateZoomGranularitySearch();
 

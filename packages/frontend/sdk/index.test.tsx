@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -230,7 +230,10 @@ import {
     Chart,
     Dashboard,
     MetricsCatalog,
+    Provider,
     createLightdashApiClient,
+    useContentToken,
+    type EmbedContentTokenRequest,
 } from './index';
 
 describe('SDK Dashboard - URL Sync Behavior', () => {
@@ -909,5 +912,287 @@ describe('SDK host page isolation', () => {
                 node.getAttribute('data-mantine-color-scheme'),
             ),
         ).toEqual(['light', 'dark']);
+    });
+});
+
+describe('SDK project token', () => {
+    const encode = (payload: object) =>
+        `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(payload))
+            .replace(/=+$/, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')}.test`;
+    const projectToken = encode({
+        content: { type: 'project', projectUuid: 'test-project-uuid' },
+    });
+    const chartToken = encode({
+        content: {
+            type: 'chart',
+            projectUuid: 'test-project-uuid',
+            contentId: 'chart-1',
+        },
+    });
+    const instanceUrl = 'http://localhost:3000';
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('exchanges the project token for the chart it renders', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    status: 'ok',
+                    results: { token: chartToken, expiresAt: '2030-01-01' },
+                }),
+                { status: 200 },
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { findByTestId } = render(
+            <Chart token={projectToken} instanceUrl={instanceUrl} id="chart-1" />,
+        );
+
+        expect(await findByTestId('embed-chart-view')).toHaveAttribute(
+            'data-token',
+            chartToken,
+        );
+        const exchange = fetchMock.mock.calls.find(([url]) =>
+            String(url).endsWith('/api/v1/embed/test-project-uuid/content-token'),
+        );
+        expect(exchange).toBeDefined();
+        const [, requestInit] = exchange!;
+        expect(requestInit.headers['lightdash-embed-token']).toBe(projectToken);
+        expect(JSON.parse(requestInit.body)).toEqual({
+            type: 'chart',
+            savedChartUuid: 'chart-1',
+        });
+    });
+
+    it('shares one exchange between components for the same content', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    status: 'ok',
+                    results: { token: chartToken, expiresAt: '2030-01-01' },
+                }),
+                { status: 200 },
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { findAllByTestId } = render(
+            <>
+                <Chart token={projectToken} instanceUrl={instanceUrl} id="chart-2" />
+                <Chart token={projectToken} instanceUrl={instanceUrl} id="chart-2" />
+            </>,
+        );
+
+        expect(await findAllByTestId('embed-chart-view')).toHaveLength(2);
+        const exchanges = fetchMock.mock.calls.filter(([url]) =>
+            String(url).endsWith('/content-token'),
+        );
+        expect(exchanges).toHaveLength(1);
+    });
+
+    it('asks for an id when a project token renders a dashboard without one', async () => {
+        vi.stubGlobal('fetch', vi.fn());
+        const { findByRole } = render(
+            <Dashboard token={projectToken} instanceUrl={instanceUrl} />,
+        );
+        expect(await findByRole('alert')).toHaveTextContent(
+            'A project token needs the `id` of the content to show.',
+        );
+    });
+});
+
+describe('SDK useContentToken', () => {
+    const encode = (payload: object) =>
+        `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(payload))
+            .replace(/=+$/, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')}.test`;
+    const projectToken = encode({
+        content: { type: 'project', projectUuid: 'test-project-uuid' },
+    });
+    const dashboardToken = encode({
+        content: {
+            type: 'dashboard',
+            projectUuid: 'test-project-uuid',
+            dashboardUuid: 'dashboard-9',
+        },
+    });
+    const instanceUrl = 'http://localhost:3000';
+
+    const ShowToken: React.FC<{ request: EmbedContentTokenRequest }> = ({
+        request,
+    }) => {
+        const { token, error } = useContentToken(request);
+        return (
+            <output data-testid="content-token">
+                {error ? `error:${error.message}` : token ?? ''}
+            </output>
+        );
+    };
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('exchanges the project token of the Provider, with the rights asked for', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    status: 'ok',
+                    results: { token: dashboardToken, expiresAt: '2030-01-01' },
+                }),
+                { status: 200 },
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+        const request: EmbedContentTokenRequest = {
+            type: 'dashboard',
+            dashboardUuid: 'dashboard-9',
+            rights: { canExportCsv: false },
+        };
+
+        const { findByTestId } = render(
+            <Provider instanceUrl={instanceUrl} token={projectToken}>
+                <ShowToken request={request} />
+            </Provider>,
+        );
+
+        await waitFor(() =>
+            expect(screen.getByTestId('content-token')).toHaveTextContent(
+                dashboardToken,
+            ),
+        );
+        await findByTestId('content-token');
+        const [url, requestInit] = fetchMock.mock.calls[0];
+        expect(String(url)).toBe(
+            `${instanceUrl}/api/v1/embed/test-project-uuid/content-token`,
+        );
+        expect(requestInit.headers['lightdash-embed-token']).toBe(projectToken);
+        expect(JSON.parse(requestInit.body)).toEqual(request);
+    });
+
+    it('returns a dashboard token of the Provider as is', async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(
+            <Provider instanceUrl={instanceUrl} token={dashboardToken}>
+                <ShowToken
+                    request={{ type: 'dashboard', dashboardUuid: 'dashboard-9' }}
+                />
+            </Provider>,
+        );
+
+        await waitFor(() =>
+            expect(screen.getByTestId('content-token')).toHaveTextContent(
+                dashboardToken,
+            ),
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('reports a refused exchange', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        status: 'error',
+                        error: { message: 'Dashboard nope is not embedded' },
+                    }),
+                    { status: 403 },
+                ),
+            ),
+        );
+
+        render(
+            <Provider instanceUrl={instanceUrl} token={projectToken}>
+                <ShowToken request={{ type: 'dashboard', dashboardUuid: 'nope' }} />
+            </Provider>,
+        );
+
+        await waitFor(() =>
+            expect(screen.getByTestId('content-token')).toHaveTextContent(
+                'error:Dashboard nope is not embedded',
+            ),
+        );
+    });
+});
+
+describe('SDK API client with a project token', () => {
+    const encode = (payload: object) =>
+        `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(payload))
+            .replace(/=+$/, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')}.test`;
+    const projectToken = encode({
+        content: { type: 'project', projectUuid: 'project-1' },
+    });
+
+    it('exchanges the token before reading a chart, once per chart', async () => {
+        const fetchMock = vi.fn(async (url: string) => {
+            if (url.endsWith('/content-token')) {
+                return new Response(
+                    JSON.stringify({
+                        status: 'ok',
+                        results: { token: 'chart-token', expiresAt: '2030-01-01' },
+                    }),
+                    { status: 200 },
+                );
+            }
+            return new Response(
+                JSON.stringify({
+                    status: 'ok',
+                    results: {
+                        uuid: 'chart-1',
+                        name: 'Chart',
+                        description: null,
+                        metricQuery: {
+                            exploreName: 'orders',
+                            dimensions: [],
+                            metrics: [],
+                            tableCalculations: [],
+                            limit: 500,
+                        },
+                        chartConfig: { type: 'table', config: {} },
+                    },
+                }),
+                { status: 200 },
+            );
+        });
+        const client = createLightdashApiClient({
+            instanceUrl: 'http://localhost:3000',
+            projectUuid: 'project-1',
+            auth: { type: 'embedToken', token: projectToken },
+            fetch: fetchMock as unknown as typeof fetch,
+        });
+
+        await client.getChart({ chartUuid: 'chart-1' });
+        await client.getChart({ chartUuid: 'chart-1' });
+
+        const calls = fetchMock.mock.calls.map(([url, init]) => ({
+            url: String(url),
+            token: (init as RequestInit & { headers: Record<string, string> })
+                .headers['lightdash-embed-token'],
+        }));
+        expect(calls.filter((call) => call.url.endsWith('/content-token'))).toHaveLength(1);
+        const chartReads = calls.filter((call) => call.url.includes('/saved/chart-1'));
+        expect(chartReads).toHaveLength(2);
+        expect(chartReads.every((call) => call.token === 'chart-token')).toBe(true);
+    });
+
+    it('needs the dashboard uuid to read a dashboard', async () => {
+        const client = createLightdashApiClient({
+            instanceUrl: 'http://localhost:3000',
+            projectUuid: 'project-1',
+            auth: { type: 'embedToken', token: projectToken },
+            fetch: vi.fn() as unknown as typeof fetch,
+        });
+        await expect(client.getDashboard()).rejects.toThrow('dashboardUuid is required');
     });
 });

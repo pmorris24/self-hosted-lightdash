@@ -197,6 +197,13 @@ export const EmbedJwtSchema = z
                 projectUuid: z.string().optional(),
                 serviceAccountUserUuid: z.string().uuid(),
             }),
+            z
+                .object({
+                    type: z.literal('project'),
+                    projectUuid: z.string().optional(),
+                    isPreview: z.boolean().optional(),
+                })
+                .merge(InteractivityOptionsSchema),
         ]),
         writeActions: EmbedWriteActionsSchema.optional(),
         iat: z.number().optional(),
@@ -295,6 +302,35 @@ export type EmbedJwtContentApiAccess = {
     serviceAccountUserUuid: string;
 };
 
+/**
+ * One token for a whole page: it may be exchanged for a dashboard or chart
+ * token of any content the project's embed settings allow, and it may run
+ * metric queries on the explores of that content. The rights it carries are
+ * copied onto every token minted from it.
+ */
+export type EmbedJwtContentProject = Omit<CommonEmbedJwtContent, 'type'> & {
+    type: 'project';
+};
+
+/** What a project token asks to be exchanged for. */
+export type EmbedContentTokenRequest =
+    | {
+          type: 'dashboard';
+          dashboardUuid: string;
+          // Rights to keep, out of those the project token grants.
+          rights?: InteractivityOptions;
+      }
+    | {
+          type: 'chart';
+          savedChartUuid: string;
+          rights?: InteractivityOptions;
+      };
+
+export type EmbedContentToken = {
+    token: string;
+    expiresAt: string;
+};
+
 export type CreateEmbedJwt = {
     content:
         | EmbedJwtContentDashboardUuid
@@ -303,7 +339,8 @@ export type CreateEmbedJwt = {
         | EmbedJwtContentDataApp
         | EmbedJwtContentAiAgent
         | EmbedJwtContentMetricsCatalog
-        | EmbedJwtContentApiAccess;
+        | EmbedJwtContentApiAccess
+        | EmbedJwtContentProject;
     writeActions?: EmbedWriteActions;
     userAttributes?: { [key: string]: string };
     user?: {
@@ -331,6 +368,12 @@ export function isChartContent(
     content: CreateEmbedJwt['content'],
 ): content is EmbedJwtContentChart {
     return content.type === 'chart';
+}
+
+export function isProjectContent(
+    content: CreateEmbedJwt['content'],
+): content is EmbedJwtContentProject {
+    return content.type === 'project';
 }
 
 export function isAiAgentContent(

@@ -521,7 +521,11 @@ const SimpleMap: FC<SimpleMapProps> = memo(
             minimal,
             colorPalette,
             savedChartUuid,
+            hasExplorerStore,
         } = useVisualizationContext();
+        // The extent tracker writes to the explorer store, which a chart drawn
+        // outside the explorer does not have.
+        const tracksMapExtent = !props.isInDashboard && hasExplorerStore;
         const mapConfig = useLeafletMapConfig({
             isInDashboard: props.isInDashboard,
         });
@@ -1140,7 +1144,7 @@ const SimpleMap: FC<SimpleMapProps> = memo(
                             onInteraction={recordInteraction}
                         />
                         {/* Only track extent changes in explorer, not on dashboards */}
-                        {!props.isInDashboard && <MapExtentTracker />}
+                        {tracksMapExtent && <MapExtentTracker />}
                         <MapBoundsFitter
                             geoJsonData={null}
                             scatterData={scatterData}
@@ -1345,7 +1349,7 @@ const SimpleMap: FC<SimpleMapProps> = memo(
                             onInteraction={recordInteraction}
                         />
                         {/* Only track extent changes in explorer, not on dashboards */}
-                        {!props.isInDashboard && <MapExtentTracker />}
+                        {tracksMapExtent && <MapExtentTracker />}
                         <MapBoundsFitter
                             geoJsonData={geoJsonData}
                             scatterData={null}

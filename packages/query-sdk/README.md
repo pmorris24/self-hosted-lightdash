@@ -99,6 +99,24 @@ setColorScheme('dark'); // optional: follow your page's theme
 - The project's embed settings must allow the app, and your origin must be in the instance's CORS allowlist (`LIGHTDASH_CORS_ALLOWED_DOMAINS`).
 - A data app token can't run saved charts (`savedChart`), underlying data, or custom SQL fields.
 
+### Querying from a host page with a chart or dashboard token
+
+A page that is not a data app leaves out `appUuid`. Mint an embed JWT with content `{ type: 'chart', contentId }` or `{ type: 'dashboard', dashboardUuid }` instead:
+
+```ts
+const lightdash = createEmbedClient({
+    embedToken, // chart or dashboard token
+    baseUrl: 'https://app.lightdash.cloud',
+    projectUuid: 'uuid',
+});
+
+const { data, columns } = useLightdash(savedChart(chartUuid));
+```
+
+- A chart token runs `savedChart()` for its own chart. A dashboard token runs it for every chart on that dashboard.
+- The analyst keeps the query: `savedChart()` takes its dimensions, metrics, filters and labels from the saved chart. Your page chooses how to draw the rows, for example with `Lightdash.DataChart` from `@lightdash/sdk`.
+- `externalFetch` needs a data app, so it rejects without `appUuid`.
+
 ## Query builder
 
 Queries are built with a chainable, immutable API. Fields use short names (e.g. `driver_name`), and the SDK qualifies them automatically for the API.

@@ -267,12 +267,9 @@ describe('Embed Chart JWT API', () => {
 
         describe('POST query chart', () => {
             // This is the method used for the explore to get results from a chart
-            // oxlint-disable-next-line vitest-js/no-disabled-tests -- FIXME below documents why this can't run yet
-            it.skip('should get chart query results using JWT token (authorized)', async () => {
-                // FIXME this doesn't work
-                // Currently throws a 403
+            it('should get chart query results using JWT token (authorized)', async () => {
                 const client = embedClient();
-                const resp = await client.post(
+                const resp = await client.post<Body<{ queryUuid: string }>>(
                     `/api/v2/projects/${SEED_PROJECT.project_uuid}/query/chart?projectUuid=${SEED_PROJECT.project_uuid}`,
                     {
                         context: 'chartView',
@@ -286,7 +283,8 @@ describe('Embed Chart JWT API', () => {
                         failOnStatusCode: false,
                     },
                 );
-                expect(resp.status).toBe(403);
+                expect(resp.status).toBe(200);
+                expect(resp.body.results).toHaveProperty('queryUuid');
             });
 
             // This is the method used for the explore to get results from a chart

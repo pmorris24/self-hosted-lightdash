@@ -53,7 +53,7 @@ const FunnelChart: FC<FunnelChartProps> = memo(
         enableContextMenu = true,
         ...props
     }) => {
-        const { chartRef, isLoading, resultsData, minimal } =
+        const { chartRef, isLoading, resultsData, minimal, onDataPointSelect } =
             useVisualizationContext();
         const { selectedLegends, onLegendChange } =
             useLegendDoubleClickSelection();
@@ -108,6 +108,14 @@ const FunnelChart: FC<FunnelChartProps> = memo(
                 const event = e.event?.event as unknown as PointerEvent;
                 const data = e.data as FunnelSeriesDataPoint;
 
+                if (onDataPointSelect) {
+                    onDataPointSelect({
+                        rows: data.meta.rows,
+                        position: { left: event.clientX, top: event.clientY },
+                    });
+                    return;
+                }
+
                 // Use pageX/pageY (document coordinates) to account for scroll
                 setMenuProps({
                     value: data.meta.value,
@@ -120,7 +128,7 @@ const FunnelChart: FC<FunnelChartProps> = memo(
 
                 open();
             },
-            [open],
+            [open, onDataPointSelect],
         );
 
         const handleCloseContextMenu = useCallback(() => {
@@ -130,7 +138,7 @@ const FunnelChart: FC<FunnelChartProps> = memo(
 
         const onEvents = useMemo(
             () => ({
-                ...(enableContextMenu
+                ...(enableContextMenu || onDataPointSelect
                     ? {
                           click: handleOpenContextMenu,
                           oncontextmenu: handleOpenContextMenu,
@@ -138,7 +146,12 @@ const FunnelChart: FC<FunnelChartProps> = memo(
                     : {}),
                 legendselectchanged: onLegendChange,
             }),
-            [enableContextMenu, handleOpenContextMenu, onLegendChange],
+            [
+                enableContextMenu,
+                onDataPointSelect,
+                handleOpenContextMenu,
+                onLegendChange,
+            ],
         );
 
         if (isLoading) return <LoadingChart />;

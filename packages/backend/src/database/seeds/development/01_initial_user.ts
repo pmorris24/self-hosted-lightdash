@@ -125,11 +125,13 @@ export async function seed(knex: Knex): Promise<void> {
     const { organizationId, organizationUuid } =
         await addOrganization(SEED_ORG_1);
 
-    await knex('organization_homepage_settings').insert({
-        organization_uuid: organizationUuid,
-        enabled: true,
-        opening: null,
-    });
+    if (lightdashConfig.license.licenseKey) {
+        await knex('organization_homepage_settings').insert({
+            organization_uuid: organizationUuid,
+            enabled: true,
+            opening: null,
+        });
+    }
 
     // Add user attribute
     await new UserAttributesModel({ database: knex }).create(

@@ -1,11 +1,7 @@
+import { dataApp } from './data-app';
+
 function App() {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <h1 className="text-2xl font-semibold text-gray-900">
-                Lightdash Data App Placeholder
-            </h1>
-        </div>
-    );
+    return <dataApp.Provider><dataApp.App /></dataApp.Provider>;
 }
 
 export default App;

@@ -1,8 +1,10 @@
 import {
     ChartType,
+    FilterOperator,
     SupportedDbtAdapter,
     VizAggregationOptions,
     VizIndexType,
+    type DashboardFilters,
     type Explore,
     type ItemsMap,
     type MetricQuery,
@@ -109,6 +111,45 @@ describe('buildQueryArgs', () => {
                 query: expect.objectContaining({
                     pivotDimensions: ['orders_status'],
                 }),
+            }),
+        );
+    });
+
+    it('carries the host filters of an embedded saved chart', () => {
+        const dashboardFilters: DashboardFilters = {
+            dimensions: [
+                {
+                    id: 'sdk-filter-0',
+                    label: 'status',
+                    target: {
+                        fieldId: 'orders_status',
+                        tableName: 'orders',
+                    },
+                    operator: FilterOperator.EQUALS,
+                    values: ['completed'],
+                },
+            ],
+            metrics: [],
+            tableCalculations: [],
+        };
+
+        const result = buildQueryArgs({
+            activeFields: new Set(['orders_created_date']),
+            tableName: 'orders',
+            projectUuid: 'project-uuid',
+            explore,
+            computedMetricQuery: metricQuery,
+            parameters: undefined,
+            isEditMode: false,
+            viewModeQueryArgs: { chartUuid: 'chart-uuid', dashboardFilters },
+            minimal: true,
+            savedChart,
+        });
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                chartUuid: 'chart-uuid',
+                dashboardFilters,
             }),
         );
     });

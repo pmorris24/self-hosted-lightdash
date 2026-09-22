@@ -1186,6 +1186,7 @@ const DashboardHeader = memo(
                                     type: 'dashboard',
                                     uuid: dashboard.uuid,
                                     name: dashboard.name,
+                                    spaceUuid: dashboard.spaceUuid ?? null,
                                 }}
                                 onClose={embedCodeHandlers.close}
                             />

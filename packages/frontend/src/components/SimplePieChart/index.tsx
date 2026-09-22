@@ -52,7 +52,7 @@ const SimplePieChart: FC<SimplePieChartProps> = memo(
         enableContextMenu = true,
         ...props
     }) => {
-        const { chartRef, isLoading, resultsData, minimal } =
+        const { chartRef, isLoading, resultsData, minimal, onDataPointSelect } =
             useVisualizationContext();
         const { selectedLegends, onLegendChange } =
             useLegendDoubleClickSelection();
@@ -101,6 +101,14 @@ const SimplePieChart: FC<SimplePieChartProps> = memo(
                 const event = e.event?.event as unknown as PointerEvent;
                 const data = e.data as PieSeriesDataPoint;
 
+                if (onDataPointSelect) {
+                    onDataPointSelect({
+                        rows: data.meta.rows,
+                        position: { left: event.clientX, top: event.clientY },
+                    });
+                    return;
+                }
+
                 // Use pageX/pageY (document coordinates) to account for scroll
                 setMenuProps({
                     value: data.meta.value,
@@ -113,7 +121,7 @@ const SimplePieChart: FC<SimplePieChartProps> = memo(
 
                 open();
             },
-            [open],
+            [open, onDataPointSelect],
         );
 
         const handleCloseContextMenu = useCallback(() => {
@@ -123,7 +131,7 @@ const SimplePieChart: FC<SimplePieChartProps> = memo(
 
         const onEvents = useMemo(
             () => ({
-                ...(enableContextMenu
+                ...(enableContextMenu || onDataPointSelect
                     ? {
                           click: handleOpenContextMenu,
                           oncontextmenu: handleOpenContextMenu,
@@ -131,7 +139,12 @@ const SimplePieChart: FC<SimplePieChartProps> = memo(
                     : {}),
                 legendselectchanged: onLegendChange,
             }),
-            [enableContextMenu, handleOpenContextMenu, onLegendChange],
+            [
+                enableContextMenu,
+                onDataPointSelect,
+                handleOpenContextMenu,
+                onLegendChange,
+            ],
         );
 
         if (isLoading) return <LoadingChart />;

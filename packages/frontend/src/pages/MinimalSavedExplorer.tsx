@@ -26,6 +26,7 @@ import LightdashVisualization from '../components/LightdashVisualization';
 import VisualizationProvider from '../components/LightdashVisualization/VisualizationProvider';
 import MetricQueryDataProvider from '../components/MetricQueryData/MetricQueryDataProvider';
 import UnderlyingDataModal from '../components/MetricQueryData/UnderlyingDataModal';
+import { useEmbeddedChartInteractions } from '../ee/features/embed/EmbedChart/hooks/useEmbeddedChartInteractions';
 import {
     buildInitialExplorerState,
     createExplorerStore,
@@ -65,7 +66,7 @@ const MinimalExplorerContent = memo(() => {
         useResizeObserver<HTMLDivElement>();
 
     // Get query state from hook
-    const { query, queryResults, explore } = useExplorerQuery();
+    const { query, queryResults, explore, fetchResults } = useExplorerQuery();
 
     const resultsData = useMemo(
         () => ({
@@ -79,6 +80,14 @@ const MinimalExplorerContent = memo(() => {
 
     // Get savedChart from Redux
     const savedChart = useExplorerSelector(selectSavedChart);
+
+    // Host filters and click events, when this is an SDK chart embed
+    const { onSeriesContextMenu, onDataPointSelect } =
+        useEmbeddedChartInteractions({
+            explore,
+            savedChart,
+            fetchResults,
+        });
 
     const isLoadingQueryResults =
         query.isFetching ||
@@ -158,6 +167,8 @@ const MinimalExplorerContent = memo(() => {
                 parameters={query.data?.usedParametersValues}
                 containerWidth={containerWidth}
                 containerHeight={containerHeight}
+                onSeriesContextMenu={onSeriesContextMenu}
+                onDataPointSelect={onDataPointSelect}
             >
                 <Box mih="inherit" h="100%">
                     <LightdashVisualization

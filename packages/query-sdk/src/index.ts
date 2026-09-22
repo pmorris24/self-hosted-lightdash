@@ -9,13 +9,21 @@ export { drillDown } from './drillDown';
 export { createClient, createEmbedClient, LightdashClient } from './client';
 
 // React hook
-export { useLightdash } from './useLightdash';
+export { useLightdash, type UseLightdashResult } from './useLightdash';
+export {
+    useSavedChartQuery,
+    type UseSavedChartQueryOptions,
+} from './useSavedChartQuery';
 
 // Provider
 export { LightdashProvider, useLightdashClient } from './LightdashProvider';
 
 // Transports
-export { createApiTransport, type FetchAdapter } from './apiTransport';
+export {
+    createApiTransport,
+    type ApiTransportOptions,
+    type FetchAdapter,
+} from './apiTransport';
 export { createPostMessageTransport } from './postMessageTransport';
 
 // Feature manifest (also exported via the "./features" subpath for hosts)

@@ -1,6 +1,7 @@
 import {
     derivePivotConfigurationFromChart,
     getFieldsFromMetricQuery,
+    type DashboardFilters,
     type DateGranularity,
     type Explore,
     type FieldId,
@@ -27,7 +28,11 @@ export function buildQueryArgs(options: {
     parameters: ParametersValuesMap | undefined;
     isEditMode: boolean;
     viewModeQueryArgs?:
-        | { chartUuid: string; context?: QueryExecutionContext }
+        | {
+              chartUuid: string;
+              context?: QueryExecutionContext;
+              dashboardFilters?: DashboardFilters;
+          }
         | { chartUuid: string; chartVersionUuid: string };
     dateZoomGranularity?: DateGranularity | string;
     minimal: boolean;

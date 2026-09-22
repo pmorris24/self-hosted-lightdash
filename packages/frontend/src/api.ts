@@ -14,8 +14,9 @@ import { addBreadcrumb, spanToTraceHeader, startSpan } from '@sentry/react';
 // module evaluation, so a host page (SDK embeds) that patches and later
 // restores fetch strands us with a stale reference. The global `fetch`
 // resolves at call time instead.
-import { EMBED_KEY, type InMemoryEmbed } from './ee/providers/Embed/types';
+import { type InMemoryEmbed } from './ee/providers/Embed/types';
 import { recordServerBuildHash } from './features/buildHashHandshake/buildHashHandshake';
+import { resolveEmbedScope } from './utils/embedInstance';
 import { getFromInMemoryStorage } from './utils/inMemoryStorage';
 import {
     diagnoseTransportFailure,
@@ -24,9 +25,6 @@ import {
     UnexpectedResponseError,
 } from './utils/networkDiagnostics';
 
-// TODO: import from common or fix the instantiation of the request module
-const LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY =
-    '__lightdash_sdk_instance_url';
 const LIGHTDASH_SDK_VERSION_LOCAL_STORAGE_KEY = '__lightdash_sdk_version';
 
 export const BASE_API_URL =
@@ -194,6 +192,9 @@ type LightdashApiPropsBase = {
     // Probe the server on a transport failure and tell the user what blocked
     // the request. Opt in only where a proxy or VPN is a plausible cause.
     diagnoseTransportFailures?: boolean;
+    // SDK pages with several pieces: which piece's token and instance to use.
+    // Only needed for a request made after an await; see runInEmbedInstance.
+    embedInstanceId?: string;
 };
 
 type LightdashApiPropsGetOrDelete = LightdashApiPropsBase & {
@@ -221,10 +222,9 @@ export const lightdashApi = async <T extends ApiResponse['results']>({
     signal,
     sensitive = false,
     diagnoseTransportFailures = false,
+    embedInstanceId,
 }: LightdashApiProps): Promise<T> => {
-    const baseUrl = sessionStorage.getItem(
-        LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY,
-    );
+    const { embed, instanceUrl: baseUrl } = resolveEmbedScope(embedInstanceId);
     const apiPrefix = `${baseUrl ?? BASE_API_URL}api/${version}`;
 
     let sentryTrace: string | undefined;
@@ -246,7 +246,6 @@ export const lightdashApi = async <T extends ApiResponse['results']>({
         },
     );
 
-    const embed = getFromInMemoryStorage<InMemoryEmbed>(EMBED_KEY);
     return fetch(finalizeUrl(`${apiPrefix}${url}`, embed), {
         method,
         headers: finalizeHeaders(headers, embed, sentryTrace),
@@ -339,10 +338,9 @@ export const lightdashApiStream = ({
     version = 'v1',
     signal,
     diagnoseTransportFailures = false,
+    embedInstanceId,
 }: LightdashApiProps) => {
-    const baseUrl = sessionStorage.getItem(
-        LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY,
-    );
+    const { embed, instanceUrl: baseUrl } = resolveEmbedScope(embedInstanceId);
     const apiPrefix = `${baseUrl ?? BASE_API_URL}api/${version}`;
 
     let sentryTrace: string | undefined;
@@ -364,7 +362,6 @@ export const lightdashApiStream = ({
         },
     );
 
-    const embed = getFromInMemoryStorage<InMemoryEmbed>(EMBED_KEY);
     return fetch(finalizeUrl(`${apiPrefix}${url}`, embed), {
         method,
         headers: finalizeHeaders(headers, embed, sentryTrace),

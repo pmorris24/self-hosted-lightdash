@@ -8,6 +8,7 @@ export enum LightdashEventType {
     Error = 'error',
     AllTilesLoaded = 'allTilesLoaded',
     ChartSaved = 'chartSaved',
+    Ready = 'ready',
 }
 
 /**
@@ -19,6 +20,17 @@ export type FilterChangedPayload = {
     hasFilters: boolean;
     /** Total number of active filters */
     filterCount: number;
+    /**
+     * The active dimension filters. Only sent when the token lets the viewer
+     * change filters, so it never shows more than the viewer already sees.
+     */
+    filters?: FilterChangedValue[];
+};
+
+export type FilterChangedValue = {
+    fieldId: string;
+    operator: string;
+    values: unknown[];
 };
 
 /**

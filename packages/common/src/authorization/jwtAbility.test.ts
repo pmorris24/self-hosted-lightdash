@@ -1109,3 +1109,60 @@ describe('Embedded metrics catalog abilities', () => {
         ).toBe(false);
     });
 });
+
+describe('Embedded project token abilities', () => {
+    const projectJwt = createEmbedJwt({
+        content: { type: 'project' } as Partial<CreateEmbedJwt['content']>,
+    });
+    const build = (embedSettings: OssEmbed, explores: string[]) => {
+        const builder = new AbilityBuilder<MemberAbility>(Ability);
+        applyEmbeddedAbility(
+            projectJwt,
+            { type: 'project', chartUuids: [], explores },
+            embedSettings,
+            'external-id-1',
+            builder,
+        );
+        return builder.build();
+    };
+    const exploreSubject = (exploreName: string) =>
+        subject('Explore', {
+            organizationUuid: organization.organizationUuid,
+            projectUuid: embed.projectUuid,
+            exploreNames: [exploreName],
+        });
+
+    it('limits queries to the explores of the allowed content', () => {
+        const ability = build(embed, ['orders']);
+        expect(ability.can('view', exploreSubject('orders'))).toBe(true);
+        expect(ability.can('view', exploreSubject('payments'))).toBe(false);
+    });
+
+    it('opens every explore when the settings allow all content', () => {
+        const ability = build({ ...embed, allowAllCharts: true }, []);
+        expect(ability.can('view', exploreSubject('payments'))).toBe(true);
+    });
+
+    it('never reads a dashboard or a chart directly', () => {
+        const ability = build({ ...embed, allowAllDashboards: true }, []);
+        expect(
+            ability.can(
+                'view',
+                subject('Dashboard', {
+                    organizationUuid: organization.organizationUuid,
+                    projectUuid: embed.projectUuid,
+                    dashboardUuid: 'dashboard-uuid-1',
+                }),
+            ),
+        ).toBe(false);
+        expect(
+            ability.can(
+                'view',
+                subject('SavedChart', {
+                    organizationUuid: organization.organizationUuid,
+                    projectUuid: embed.projectUuid,
+                }),
+            ),
+        ).toBe(false);
+    });
+});

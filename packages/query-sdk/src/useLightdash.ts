@@ -40,7 +40,7 @@ export const buildLineageProps = (queryUuid: string | null): LineageProps =>
 
 const noopFormat: FormatFunction = (_row, _fieldId) => '';
 
-type UseLightdashResult = {
+export type UseLightdashResult = {
     /** Result rows as flat objects. Numbers are numbers, strings are strings. */
     data: Row[];
     /** Column metadata (name, label, type) */

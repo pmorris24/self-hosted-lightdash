@@ -24,6 +24,7 @@ function useEmbed(): EmbedContext {
         return {
             embedToken: undefined,
             filters: undefined,
+            hasHostFilters: false,
             projectUuid: undefined,
             paletteUuid: undefined,
             languageMap: undefined,

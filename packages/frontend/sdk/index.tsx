@@ -5,8 +5,11 @@ import '@mantine/tiptap/styles.css';
 import '../src/styles/global.css';
 import './styles/sdk.css';
 import {
+    assertUnreachable,
+    ChartType,
     FilterOperator,
     getErrorMessage,
+    type ChartConfig,
     type EmbedDashboard as EmbedDashboardType,
     type LanguageMap,
     type SavedChart,
@@ -16,7 +19,9 @@ import {
 import { Portal, type MantineThemeOverride } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import {
+    createContext,
     useCallback,
+    useContext,
     useEffect,
     useId,
     useMemo,
@@ -28,11 +33,13 @@ import {
 import { createPortal } from 'react-dom';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import SuboptimalState from '../src/components/common/SuboptimalState/SuboptimalState';
+import { type SdkChartSelection } from '../src/ee/features/embed/EmbedChart/types';
 import { type SdkFilter } from '../src/ee/features/embed/EmbedDashboard/types';
 import { embedContractClass } from '../src/ee/features/embed/styles/embedClassContract';
 import EmbedChart from '../src/ee/pages/EmbedChart';
 import EmbedDashboard from '../src/ee/pages/EmbedDashboard';
 import EmbedExplore from '../src/ee/pages/EmbedExplore';
+import { EmbedInstanceContext } from '../src/ee/providers/Embed/EmbedInstanceContext';
 import EmbedProvider from '../src/ee/providers/Embed/EmbedProvider';
 import { type EmbedExploreChart } from '../src/ee/providers/Embed/types';
 import useEmbed from '../src/ee/providers/Embed/useEmbed';
@@ -48,21 +55,162 @@ import FullscreenProvider from '../src/providers/Fullscreen/FullscreenProvider';
 import MantineProvider from '../src/providers/MantineProvider';
 import { PortalTargetContext } from '../src/providers/PortalTarget/PortalTargetContext';
 import ReactQueryProvider from '../src/providers/ReactQuery/ReactQueryProvider';
+import { unregisterEmbedInstance } from '../src/utils/embedInstance';
 import ThirdPartyServicesProvider from '../src/providers/ThirdPartyServicesProvider';
 import TrackingProvider from '../src/providers/Tracking/TrackingProvider';
 import { setToInMemoryStorage } from '../src/utils/inMemoryStorage';
 import {
     createLightdashApiClient,
+    decodeContentType,
+    requestContentToken,
+    type EmbedContentToken,
+    type EmbedContentTokenRequest,
     type LightdashAiAgentThread,
     type LightdashAiAgentThreadResults,
     type LightdashApiClientConfig,
     type LightdashContentItem,
     type LightdashContentResults,
+    extractFields,
+    type LightdashChartFields,
+    type LightdashChartModel,
+    type LightdashQueryFilter,
     type LightdashSdkApiAuth,
     type ListAiAgentThreadsOptions,
     type ListContentOptions,
 } from './api';
-import { useLightdashAiAgentThreads, useLightdashContent } from './hooks';
+import { DataApp, DataAppComponent } from './DataApp';
+import { ComposedDashboard } from './composed/ComposedDashboard';
+import {
+    addFilter,
+    addFilters,
+    removeFilter,
+    removeFilters,
+    replaceFilter,
+} from './composed/filters';
+import { createDefaultLayout } from './composed/layout';
+import { resolveColumns } from './data/adapter';
+import {
+    buildChartConfig,
+    getDimensionColumns,
+    getValueColumns,
+    orderColumnsForChart,
+} from './data/chartConfig';
+import { DataVisualization } from './data/DataVisualization';
+import { pivotRows } from './data/pivot';
+import {
+    type DataChartSelection,
+    type DataChartType,
+    type DataColumn,
+    type DataFormatter,
+    type DataOptions,
+    type DataRow,
+} from './data/types';
+import {
+    ContextMenu,
+    type ContextMenuItem,
+    type ContextMenuSection,
+} from './drilldown/ContextMenu';
+import { DrilldownBreadcrumbs } from './drilldown/DrilldownBreadcrumbs';
+import { DrilldownWidget } from './drilldown/DrilldownWidget';
+import {
+    useDrilldown,
+    type DrilldownFilter,
+    type DrilldownStep,
+    type UseDrilldownOptions,
+    type UseDrilldownResult,
+} from './drilldown/useDrilldown';
+import {
+    useJumpToDashboard,
+    type JumpToDashboardTarget,
+} from './drilldown/useJumpToDashboard';
+import { AgentInsights } from './ai/AgentInsights';
+import { type AgentAnswer } from './ai/agentApi';
+import {
+    useAgentAnswer,
+    type UseAgentAnswerResult,
+} from './ai/useAgentAnswer';
+import { useAgentSuggestions } from './ai/useAgentSuggestions';
+import { LoadingOverlay } from './helpers/LoadingOverlay';
+import {
+    formatDate,
+    formatNumber,
+    formatRows,
+    getDefaultDateFormat,
+    type DateGranularity,
+} from './helpers/formatting';
+import {
+    createLinearGradient,
+    createRadialGradient,
+    GradientDirections,
+    isGradient,
+    isLinearGradient,
+    isRadialGradient,
+    type Gradient,
+    type GradientStop,
+    type LinearGradient,
+    type RadialGradient,
+} from './helpers/gradients';
+import { useSyncedState } from './helpers/useSyncedState';
+import { useLightdashTheme, type LightdashTheme } from './theme/themeContext';
+import { ThemeProvider } from './theme/ThemeProvider';
+import { CustomWidgetsProvider } from './widgets/customWidgets';
+import {
+    useCustomWidgets,
+    useOptionalCustomWidgets,
+    type CustomWidgetComponent,
+    type CustomWidgetProps,
+} from './widgets/customWidgetsContext';
+import {
+    WidgetFrame,
+    type WidgetFrameProps,
+    type WidgetStyleOptions,
+} from './widgets/WidgetFrame';
+import {
+    LightdashFrame,
+    type LightdashFrameEvent,
+    type LightdashFrameEventName,
+    type LightdashFrameOptions,
+} from './frame/LightdashFrame';
+import {
+    FilterTileContent,
+    type FilterTileFieldProps,
+} from './filters/FilterTileContent';
+import { dashboardModelToComposed } from './composed/model';
+import {
+    chartModelTranslator,
+    type ChartModelDataChartWidgetProps,
+    type ChartModelDataChartProps,
+    type ChartModelDataPivotTableProps,
+    type ChartModelDataTableProps,
+    type ChartModelPivotTableWidgetProps,
+    type ChartModelQueryParams,
+    type ChartModelWidgetProps,
+} from './model/chartModelTranslator';
+import { useComposedDashboard } from './composed/useComposedDashboard';
+import {
+    useDashboardModel,
+    useExploreFields,
+    useFieldValues,
+    useLightdashFetch,
+    useChartModel,
+    useChartQuery,
+    useLightdashAiAgentThreads,
+    useLightdashQueryCache,
+    useMetricQuery,
+    useMetricQueryPivot,
+    useLightdashContent,
+    type UseChartQueryArgs,
+    type UseChartQueryResult,
+} from './hooks';
+import {
+    type ComposedDashboardChangeEvent,
+    type ComposedDashboardProps,
+    type ComposedDashboardResult,
+    type ComposedLayout,
+    type ComposedWidget,
+    type ComposedWidgetState,
+    type UseComposedDashboardOptions,
+} from './composed/types';
 import { SDK_SCOPE_CLASS } from './styles/scope.json';
 const LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY =
     '__lightdash_sdk_instance_url';
@@ -82,7 +230,11 @@ type BaseProps = {
     onExplore?: (options: { chart: SavedChart }) => void;
 };
 
-type DashboardProps = BaseProps & {
+type DashboardProps = Omit<BaseProps, 'instanceUrl' | 'token'> &
+    ConnectionProps & {
+    // The dashboard to show. The token decides what a viewer may read, so
+    // this only makes page code explicit; a mismatch is reported, not served.
+    id?: string;
     paletteUuid?: string;
     isEditMode?: boolean;
     onEditModeChange?: (isEditMode: boolean) => void;
@@ -92,15 +244,30 @@ type DashboardBuilderProps = DashboardProps & {
     onDashboardReady?: (dashboard: EmbedDashboardType) => void;
 };
 
-type ChartProps = Omit<BaseProps, 'filters' | 'onExplore'> & {
-    id: string;
-    isEditMode?: boolean;
-};
+type ChartProps = Omit<
+    BaseProps,
+    'filters' | 'onExplore' | 'instanceUrl' | 'token'
+> &
+    ConnectionProps & {
+        id: string;
+        isEditMode?: boolean;
+        // Host filters. The server narrows the chart with them and ignores
+        // fields the chart's explore does not have.
+        filters?: SdkFilter[];
+        // A viewer clicked a data point.
+        onSelect?: (selection: SdkChartSelection) => void;
+    };
 
 type AiAgentProps = Omit<
     BaseProps,
-    'contentOverrides' | 'uiOverrides' | 'filters' | 'onExplore'
-> & {
+    | 'contentOverrides'
+    | 'uiOverrides'
+    | 'filters'
+    | 'onExplore'
+    | 'instanceUrl'
+    | 'token'
+> &
+    ConnectionProps & {
     agentUuid: string;
     onThreadChange?: (options: { threadUuid: string }) => void;
     threadUuid?: string;
@@ -108,8 +275,14 @@ type AiAgentProps = Omit<
 
 type MetricsCatalogProps = Omit<
     BaseProps,
-    'contentOverrides' | 'uiOverrides' | 'filters' | 'onExplore'
->;
+    | 'contentOverrides'
+    | 'uiOverrides'
+    | 'filters'
+    | 'onExplore'
+    | 'instanceUrl'
+    | 'token'
+> &
+    ConnectionProps;
 
 const decodeJWT = (token: string) => {
     const splits = token.split('.');
@@ -129,14 +302,13 @@ const decodeJWT = (token: string) => {
     };
 };
 
-const persistInstanceUrl = (instanceUrl: string) => {
-    if (!instanceUrl.endsWith('/')) {
-        instanceUrl = `${instanceUrl}/`;
-    }
+const normalizeInstanceUrl = (instanceUrl: string) =>
+    instanceUrl.endsWith('/') ? instanceUrl : `${instanceUrl}/`;
 
+const persistInstanceUrl = (instanceUrl: string) => {
     sessionStorage.setItem(
         LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY,
-        instanceUrl,
+        normalizeInstanceUrl(instanceUrl),
     );
 
     if (typeof __SDK_VERSION__ !== 'undefined') {
@@ -147,14 +319,212 @@ const persistInstanceUrl = (instanceUrl: string) => {
     }
 };
 
+type SdkConnection = Pick<BaseProps, 'instanceUrl' | 'token'> &
+    Pick<BaseProps, 'theme' | 'styles'>;
+
+const SdkConnectionContext = createContext<SdkConnection | null>(null);
+
+type ProviderProps = PropsWithChildren<SdkConnection>;
+
+/**
+ * One connection for a host page. Pieces inside it can omit `instanceUrl`,
+ * `token`, `theme` and `styles`; a prop on a piece still wins.
+ */
+const Provider: FC<ProviderProps> = ({
+    children,
+    instanceUrl,
+    token,
+    theme,
+    styles,
+}) => {
+    const connection = useMemo(
+        () => ({ instanceUrl, token, theme, styles }),
+        [instanceUrl, token, theme, styles],
+    );
+    return (
+        <SdkConnectionContext.Provider value={connection}>
+            {children}
+        </SdkConnectionContext.Provider>
+    );
+};
+
+type ConnectionProps = Partial<SdkConnection>;
+
+/**
+ * The hook config of the page's `Lightdash.Provider`, for the query hooks:
+ * the instance, the project of the token and the token itself. Until a token
+ * promise resolves, the config has no project, which keeps the hooks idle.
+ */
+const useLightdashConfig = (): LightdashApiClientConfig => {
+    const shared = useContext(SdkConnectionContext);
+    if (!shared) {
+        throw new Error(
+            'Lightdash SDK: useLightdashConfig needs a <Lightdash.Provider> above it.',
+        );
+    }
+    const { instanceUrl, token: tokenOrTokenPromise } = shared;
+    const [token, setToken] = useState<string | null>(
+        typeof tokenOrTokenPromise === 'string' ? tokenOrTokenPromise : null,
+    );
+
+    useEffect(() => {
+        let isCurrent = true;
+        Promise.resolve(tokenOrTokenPromise).then((resolved) => {
+            if (isCurrent) setToken(resolved);
+        });
+        return () => {
+            isCurrent = false;
+        };
+    }, [tokenOrTokenPromise]);
+
+    return useMemo(() => {
+        if (!token) return { instanceUrl };
+        const { payload } = decodeJWT(token);
+        const projectUuid =
+            payload &&
+            'content' in payload &&
+            typeof payload.content?.projectUuid === 'string'
+                ? payload.content.projectUuid
+                : undefined;
+        return {
+            instanceUrl,
+            projectUuid,
+            auth: { type: 'embedToken', token },
+        };
+    }, [instanceUrl, token]);
+};
+
+type ContentTokenState = {
+    token: string | null;
+    error: Error | null;
+};
+
+/**
+ * A dashboard or chart token minted from the token of the page's
+ * `Lightdash.Provider`, for a frame or for code outside the React pieces.
+ * `rights` keeps a subset of what the project token grants; it cannot add
+ * any. A dashboard or chart token in the Provider is returned as is.
+ */
+const useContentToken = (
+    request: EmbedContentTokenRequest,
+): ContentTokenState => {
+    const { instanceUrl, projectUuid, auth } = useLightdashConfig();
+    const pageToken = auth?.token;
+    const requestKey = JSON.stringify(request);
+    const requestRef = useRef(request);
+    requestRef.current = request;
+    const [state, setState] = useState<ContentTokenState & { key: string }>({
+        key: requestKey,
+        token: null,
+        error: null,
+    });
+
+    useEffect(() => {
+        if (!pageToken || !projectUuid) return undefined;
+        let isCurrent = true;
+        const exchange =
+            decodeContentType(pageToken) === 'project'
+                ? exchangeProjectToken(
+                      instanceUrl,
+                      projectUuid,
+                      pageToken,
+                      requestRef.current,
+                  )
+                : Promise.resolve(pageToken);
+        exchange.then(
+            (token) => {
+                if (isCurrent) setState({ key: requestKey, token, error: null });
+            },
+            (error: unknown) => {
+                if (isCurrent) {
+                    setState({
+                        key: requestKey,
+                        token: null,
+                        error:
+                            error instanceof Error
+                                ? error
+                                : new Error('Could not get a content token'),
+                    });
+                }
+            },
+        );
+        return () => {
+            isCurrent = false;
+        };
+    }, [instanceUrl, projectUuid, pageToken, requestKey]);
+
+    return state.key === requestKey
+        ? { token: state.token, error: state.error }
+        : { token: null, error: null };
+};
+
+const useSdkConnection = (props: ConnectionProps): SdkConnection => {
+    const shared = useContext(SdkConnectionContext);
+    const lightdashTheme = useLightdashTheme();
+    const instanceUrl = props.instanceUrl ?? shared?.instanceUrl;
+    const token = props.token ?? shared?.token;
+    if (!instanceUrl || !token) {
+        throw new Error(
+            'Lightdash SDK: pass `instanceUrl` and `token`, or wrap this component in <Lightdash.Provider>.',
+        );
+    }
+    return {
+        instanceUrl,
+        token,
+        theme: props.theme ?? shared?.theme ?? lightdashTheme.colorScheme,
+        styles: props.styles ??
+            shared?.styles ?? {
+                backgroundColor: lightdashTheme.backgroundColor,
+                fontFamily: lightdashTheme.fontFamily,
+            },
+    };
+};
+
+// Content tokens minted from a project token, one per project token and
+// content, so several components for the same content share one exchange.
+const contentTokenCache = new Map<string, Promise<string>>();
+
+const exchangeProjectToken = (
+    instanceUrl: string,
+    projectUuid: string,
+    projectToken: string,
+    content: EmbedContentTokenRequest,
+): Promise<string> => {
+    // Keyed on the whole request: the same content with other rights is
+    // another token.
+    const key = `${projectToken}\u0000${JSON.stringify(content)}`;
+    const cached = contentTokenCache.get(key);
+    if (cached) return cached;
+    const exchange = requestContentToken(
+        instanceUrl,
+        projectUuid,
+        projectToken,
+        content,
+    ).then((result) => result.token);
+    contentTokenCache.set(key, exchange);
+    exchange.catch(() => contentTokenCache.delete(key));
+    return exchange;
+};
+
+/**
+ * The token a component sends, decoded. A project token is exchanged for the
+ * token of `content` when the component names its content; without it, the
+ * project token is passed on as is, for the pieces that only run queries.
+ */
 const useEmbedTokenContext = (
     instanceUrl: string,
     tokenOrTokenPromise: BaseProps['token'],
+    content?: EmbedContentTokenRequest,
 ) => {
     const [tokenContext, setTokenContext] = useState<{
         token: string;
         projectUuid: string;
+        // The dashboard the token is signed for, when it is a dashboard token.
+        dashboardUuid: string | null;
+        // True when the token is a project token that was not exchanged.
+        isProjectToken: boolean;
     } | null>(null);
+    const contentKey = content ? JSON.stringify(content) : null;
 
     useEffect(() => {
         // Flipped by cleanup on unmount and whenever the token prop changes,
@@ -172,17 +542,45 @@ const useEmbedTokenContext = (
                 const { payload } = decodeJWT(tokenToDecode);
 
                 if (
-                    payload &&
-                    'content' in payload &&
-                    'projectUuid' in payload.content
+                    !payload ||
+                    !('content' in payload) ||
+                    !('projectUuid' in payload.content)
                 ) {
-                    setTokenContext({
-                        token: tokenToDecode,
-                        projectUuid: payload.content.projectUuid,
-                    });
-                } else {
                     throw new Error('Error decoding token');
                 }
+                const projectUuid: string = payload.content.projectUuid;
+
+                if (payload.content.type === 'project' && content) {
+                    return exchangeProjectToken(
+                        instanceUrl,
+                        projectUuid,
+                        tokenToDecode,
+                        content,
+                    ).then((contentToken) => {
+                        if (!isCurrent) return;
+                        setTokenContext({
+                            token: contentToken,
+                            projectUuid,
+                            dashboardUuid:
+                                content.type === 'dashboard'
+                                    ? content.dashboardUuid
+                                    : null,
+                            isProjectToken: false,
+                        });
+                    });
+                }
+
+                setTokenContext({
+                    token: tokenToDecode,
+                    projectUuid,
+                    dashboardUuid:
+                        'dashboardUuid' in payload.content &&
+                        typeof payload.content.dashboardUuid === 'string'
+                            ? payload.content.dashboardUuid
+                            : null,
+                    isProjectToken: payload.content.type === 'project',
+                });
+                return undefined;
             })
             .catch((error) => {
                 console.error(error);
@@ -192,10 +590,13 @@ const useEmbedTokenContext = (
         return () => {
             isCurrent = false;
         };
-    }, [instanceUrl, tokenOrTokenPromise]);
+    }, [instanceUrl, tokenOrTokenPromise, contentKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return tokenContext;
 };
+
+const PROJECT_TOKEN_NEEDS_ID =
+    'A project token needs the `id` of the content to show.';
 
 const getDashboardContainerStyles = (
     styles: DashboardProps['styles'],
@@ -314,8 +715,9 @@ const SdkProviders: FC<
         styles?: { backgroundColor?: string; fontFamily?: string };
         theme?: 'light' | 'dark';
         projectUuid?: string;
+        instanceUrl?: string;
     }>
-> = ({ children, styles, theme, projectUuid }) => {
+> = ({ children, styles, theme, projectUuid, instanceUrl }) => {
     const colorScheme = theme ?? 'light';
     const rootRef = useRef<HTMLDivElement>(null);
     const getRootElement = useCallback(() => rootRef.current ?? undefined, []);
@@ -325,6 +727,16 @@ const SdkProviders: FC<
     // scoped stylesheets key on it.
     const instanceId = `${SDK_BUNDLE_ID}-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
     const instanceClass = `lightdash-sdk-instance-${instanceId}`;
+    // The instance id also scopes this piece's requests, so several pieces on
+    // one page each send their own token.
+    const embedInstance = useMemo(
+        () => ({
+            embedInstanceId: instanceId,
+            instanceUrl: instanceUrl ? normalizeInstanceUrl(instanceUrl) : null,
+        }),
+        [instanceId, instanceUrl],
+    );
+    useEffect(() => () => unregisterEmbedInstance(instanceId), [instanceId]);
     // Body-level container for everything that portals out of the inline root
     // (dropdowns, modals, drag overlays), so it escapes the host's overflow and
     // stacking contexts while keeping the SDK's variables and colour scheme.
@@ -373,7 +785,8 @@ const SdkProviders: FC<
                 />,
                 document.body,
             )}
-            <ReactQueryProvider>
+            <ReactQueryProvider embedInstanceId={instanceId}>
+                <EmbedInstanceContext.Provider value={embedInstance}>
                 <MantineProvider
                     themeOverride={themeOverride}
                     notificationsLimit={0}
@@ -425,16 +838,14 @@ const SdkProviders: FC<
                         </PortalTargetContext.Provider>
                     </div>
                 </MantineProvider>
+                </EmbedInstanceContext.Provider>
             </ReactQueryProvider>
         </>
     );
 };
 
 const Dashboard: FC<DashboardProps> = ({
-    token: tokenOrTokenPromise,
-    instanceUrl,
-    styles,
-    theme,
+    id,
     filters,
     contentOverrides,
     uiOverrides,
@@ -442,8 +853,19 @@ const Dashboard: FC<DashboardProps> = ({
     paletteUuid,
     isEditMode,
     onEditModeChange,
+    ...connectionProps
 }) => {
-    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
+    const tokenContext = useEmbedTokenContext(
+        instanceUrl,
+        tokenOrTokenPromise,
+        id ? { type: 'dashboard', dashboardUuid: id } : undefined,
+    );
     const { exploreChart, handleExplore, handleBackToDashboard } =
         useDashboardExploreNavigation(onExplore);
 
@@ -451,8 +873,21 @@ const Dashboard: FC<DashboardProps> = ({
         return null;
     }
 
+    if (tokenContext.isProjectToken) {
+        return <p role="alert">{PROJECT_TOKEN_NEEDS_ID}</p>;
+    }
+
+    if (id && tokenContext.dashboardUuid && id !== tokenContext.dashboardUuid) {
+        return (
+            <p role="alert">
+                This token is signed for another dashboard than `{id}`.
+            </p>
+        );
+    }
+
     return (
         <SdkProviders
+            instanceUrl={instanceUrl}
             projectUuid={tokenContext.projectUuid}
             styles={styles}
             theme={theme}
@@ -595,10 +1030,7 @@ const DashboardBuilderContent: FC<{
 };
 
 const DashboardBuilder: FC<DashboardBuilderProps> = ({
-    token: tokenOrTokenPromise,
-    instanceUrl,
-    styles,
-    theme,
+    id,
     filters,
     contentOverrides,
     uiOverrides,
@@ -607,8 +1039,19 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
     isEditMode,
     onEditModeChange,
     onDashboardReady,
+    ...connectionProps
 }) => {
-    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
+    const tokenContext = useEmbedTokenContext(
+        instanceUrl,
+        tokenOrTokenPromise,
+        id ? { type: 'dashboard', dashboardUuid: id } : undefined,
+    );
     const { exploreChart, handleExplore, handleBackToDashboard } =
         useDashboardExploreNavigation(onExplore);
 
@@ -616,8 +1059,13 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
         return null;
     }
 
+    if (tokenContext.isProjectToken) {
+        return <p role="alert">{PROJECT_TOKEN_NEEDS_ID}</p>;
+    }
+
     return (
         <SdkProviders
+            instanceUrl={instanceUrl}
             projectUuid={tokenContext.projectUuid}
             styles={styles}
             theme={theme}
@@ -658,19 +1106,23 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
 };
 
 const Explore: FC<
-    BaseProps & { exploreId: string; savedChart: SavedChart }
+    Omit<BaseProps, 'instanceUrl' | 'token'> &
+        ConnectionProps & { exploreId: string; savedChart: SavedChart }
 > = ({
-    token: tokenOrTokenPromise,
-    instanceUrl,
-    styles,
-    theme,
     filters,
     contentOverrides,
     uiOverrides,
     onExplore,
     exploreId,
     savedChart,
+    ...connectionProps
 }) => {
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
     const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
 
     if (!tokenContext) {
@@ -679,6 +1131,7 @@ const Explore: FC<
 
     return (
         <SdkProviders
+            instanceUrl={instanceUrl}
             projectUuid={tokenContext.projectUuid}
             styles={styles}
             theme={theme}
@@ -762,16 +1215,24 @@ const ChartContent: FC<{
 };
 
 const Chart: FC<ChartProps> = ({
-    token: tokenOrTokenPromise,
-    instanceUrl,
-    styles,
-    theme,
     contentOverrides,
     uiOverrides,
     id,
     isEditMode,
+    filters,
+    onSelect,
+    ...connectionProps
 }) => {
-    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
+    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise, {
+        type: 'chart',
+        savedChartUuid: id,
+    });
 
     if (!tokenContext) {
         return null;
@@ -781,7 +1242,9 @@ const Chart: FC<ChartProps> = ({
         width: '100%',
         height: '100%',
         position: 'relative' as const,
-        overflow: 'auto',
+        // A chart fills its box. With `auto`, one brief scrollbar makes the
+        // fixed-size canvas larger than the box, and both scrollbars stay.
+        overflow: isEditMode ? 'auto' : 'hidden',
         backgroundColor:
             styles?.backgroundColor ??
             (theme ? 'var(--mantine-color-body)' : undefined),
@@ -789,6 +1252,7 @@ const Chart: FC<ChartProps> = ({
 
     return (
         <SdkProviders
+            instanceUrl={instanceUrl}
             projectUuid={tokenContext.projectUuid}
             styles={styles}
             theme={theme}
@@ -799,6 +1263,8 @@ const Chart: FC<ChartProps> = ({
                 contentOverrides={contentOverrides}
                 uiOverrides={uiOverrides}
                 savedQueryUuid={id}
+                filters={filters}
+                onSelect={onSelect}
             >
                 <ChartContent
                     containerStyles={containerStyles}
@@ -811,13 +1277,16 @@ const Chart: FC<ChartProps> = ({
 
 const AiAgent: FC<AiAgentProps> = ({
     agentUuid,
-    instanceUrl,
     onThreadChange,
-    styles,
-    theme,
     threadUuid,
-    token: tokenOrTokenPromise,
+    ...connectionProps
 }) => {
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
     const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
     const instanceOrigin = new URL(instanceUrl).origin;
     const targetOrigin =
@@ -879,12 +1348,13 @@ const AiAgent: FC<AiAgentProps> = ({
     );
 };
 
-const MetricsCatalog: FC<MetricsCatalogProps> = ({
-    instanceUrl,
-    styles,
-    theme,
-    token: tokenOrTokenPromise,
-}) => {
+const MetricsCatalog: FC<MetricsCatalogProps> = (connectionProps) => {
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
     const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
     const [exploreChart, setExploreChart] = useState<EmbedExploreChart>();
 
@@ -894,6 +1364,7 @@ const MetricsCatalog: FC<MetricsCatalogProps> = ({
 
     return (
         <SdkProviders
+            instanceUrl={instanceUrl}
             projectUuid={tokenContext.projectUuid}
             styles={styles}
             theme={theme}
@@ -928,7 +1399,720 @@ const MetricsCatalog: FC<MetricsCatalogProps> = ({
     );
 };
 
+type FilterPieceProps = ConnectionProps & Pick<BaseProps, 'uiOverrides'>;
+
+// Filter components are SDK pieces too: they need the token scope for field
+// values, and the SDK's theme and UI strings.
+const FilterPiece: FC<PropsWithChildren<FilterPieceProps>> = ({
+    children,
+    uiOverrides,
+    ...connectionProps
+}) => {
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
+    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+
+    if (!tokenContext) {
+        return null;
+    }
+
+    return (
+        <SdkProviders
+            instanceUrl={instanceUrl}
+            projectUuid={tokenContext.projectUuid}
+            styles={styles}
+            theme={theme}
+        >
+            <EmbedProvider
+                embedToken={tokenContext.token}
+                projectUuid={tokenContext.projectUuid}
+                uiOverrides={uiOverrides}
+            >
+                {children}
+            </EmbedProvider>
+        </SdkProviders>
+    );
+};
+
+type FilterTileProps = FilterPieceProps & FilterTileFieldProps;
+
+/** One filter on one field: an operator and a value input with field values. */
+const FilterTile: FC<FilterTileProps> = ({
+    model,
+    field,
+    label,
+    operators,
+    defaultOperator,
+    filter,
+    onChange,
+    ...pieceProps
+}) => (
+    <FilterPiece {...pieceProps}>
+        <FilterTileContent
+            model={model}
+            field={field}
+            label={label}
+            operators={operators}
+            defaultOperator={defaultOperator}
+            filter={filter}
+            onChange={onChange}
+        />
+    </FilterPiece>
+);
+
+type TypedFilterTileProps = Omit<FilterTileProps, 'operators'>;
+
+const MEMBER_OPERATORS: FilterTileProps['operators'] = ['equals', 'notEquals'];
+const DATE_RANGE_OPERATORS: FilterTileProps['operators'] = ['inBetween'];
+const RELATIVE_DATE_OPERATORS: FilterTileProps['operators'] = [
+    'inThePast',
+    'notInThePast',
+    'inTheNext',
+    'inTheCurrent',
+    'notInTheCurrent',
+];
+const CRITERIA_OPERATORS: FilterTileProps['operators'] = [
+    'equals',
+    'notEquals',
+    'lessThan',
+    'lessThanOrEqual',
+    'greaterThan',
+    'greaterThanOrEqual',
+    'inBetween',
+    'notInBetween',
+];
+
+/** Pick members of a field from a list of its values. */
+const MemberFilterTile: FC<TypedFilterTileProps> = (props) => (
+    <FilterTile {...props} operators={MEMBER_OPERATORS} />
+);
+
+/** A start date and an end date. */
+const DateRangeFilterTile: FC<TypedFilterTileProps> = (props) => (
+    <FilterTile {...props} operators={DATE_RANGE_OPERATORS} />
+);
+
+/** A period relative to now: the last 7 days, this month, the next quarter. */
+const RelativeDateFilterTile: FC<TypedFilterTileProps> = (props) => (
+    <FilterTile {...props} operators={RELATIVE_DATE_OPERATORS} />
+);
+
+/** A comparison on a number: greater than, between, and so on. */
+const CriteriaFilterTile: FC<TypedFilterTileProps> = (props) => (
+    <FilterTile {...props} operators={CRITERIA_OPERATORS} />
+);
+
+type FiltersPanelField = Pick<
+    FilterTileFieldProps,
+    'model' | 'field' | 'label' | 'operators' | 'defaultOperator'
+>;
+
+type FiltersPanelProps = FilterPieceProps & {
+    fields: FiltersPanelField[];
+    filters: SdkFilter[];
+    onChange: (filters: SdkFilter[]) => void;
+};
+
+/** Several filter tiles in one piece, working on one list of filters. */
+const FiltersPanel: FC<FiltersPanelProps> = ({
+    fields,
+    filters,
+    onChange,
+    ...pieceProps
+}) => (
+    <FilterPiece {...pieceProps}>
+        <div
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            data-lightdash-filters-panel=""
+        >
+            {fields.map((panelField) => (
+                <FilterTileContent
+                    key={`${panelField.model}.${panelField.field}`}
+                    {...panelField}
+                    filter={filters.find(
+                        (filter) =>
+                            filter.model === panelField.model &&
+                            filter.field === panelField.field,
+                    )}
+                    onChange={(next) =>
+                        onChange(
+                            next
+                                ? addFilter(filters, next)
+                                : removeFilter(filters, panelField),
+                        )
+                    }
+                />
+            ))}
+        </div>
+    </FilterPiece>
+);
+
+type DataPieceProps = FilterPieceProps & {
+    rows: DataRow[];
+    columns?: DataColumn[];
+    format?: DataFormatter;
+    isLoading?: boolean;
+    colorPalette?: string[];
+};
+
+type DataChartProps = DataPieceProps & {
+    chartType: DataChartType;
+    dataOptions: DataOptions;
+    // A viewer clicked a data point.
+    onSelect?: (selection: DataChartSelection) => void;
+};
+
+/**
+ * A chart from rows that host code supplies, drawn by the Lightdash renderer.
+ * The rows can come from the query SDK or from anywhere else.
+ */
+const DataChart: FC<DataChartProps> = ({
+    rows: inputRows,
+    columns: inputColumns,
+    format,
+    isLoading,
+    colorPalette,
+    chartType,
+    dataOptions,
+    onSelect,
+    ...pieceProps
+}) => {
+    const { palette: themePalette } = useLightdashTheme();
+    // `breakBy` pivots the rows here, then the chart sees plain value columns.
+    const pivoted = useMemo(() => {
+        const { breakBy, category } = dataOptions;
+        if (!breakBy || !category) return null;
+        return pivotRows({
+            rows: inputRows,
+            columns: resolveColumns(inputRows, inputColumns),
+            groupBy: [category],
+            breakBy,
+            values: getValueColumns(dataOptions),
+        });
+    }, [inputRows, inputColumns, dataOptions]);
+    const rows = pivoted?.rows ?? inputRows;
+    const columns = pivoted?.columns ?? inputColumns;
+    const chartDataOptions = useMemo(
+        () =>
+            pivoted
+                ? { ...dataOptions, value: pivoted.valueColumns }
+                : dataOptions,
+        [pivoted, dataOptions],
+    );
+
+    const chartConfig = useMemo(
+        () => buildChartConfig(chartType, chartDataOptions),
+        [chartType, chartDataOptions],
+    );
+    const valueColumns = useMemo(
+        () => getValueColumns(chartDataOptions),
+        [chartDataOptions],
+    );
+    const orderedColumns = useMemo(
+        () =>
+            orderColumnsForChart(
+                resolveColumns(rows, columns),
+                chartDataOptions,
+            ),
+        [rows, columns, chartDataOptions],
+    );
+    // A scatter reads numbers on both axes: its category stays a measure, so
+    // the x axis is a value axis and not a list of categories.
+    const dimensionColumns = useMemo(
+        () =>
+            chartType === 'scatter'
+                ? getDimensionColumns(dataOptions).filter(
+                      (name) => name !== dataOptions.category,
+                  )
+                : getDimensionColumns(dataOptions),
+        [chartType, dataOptions],
+    );
+    // The renderer reads its config once, on mount. Rows that arrive later
+    // can add series (`breakBy`), so a new set of fields remounts it.
+    const configKey = [
+        chartType,
+        chartDataOptions.category ?? '',
+        ...valueColumns,
+    ].join('\u0000');
+    return (
+        <FilterPiece {...pieceProps}>
+            <DataVisualization
+                key={configKey}
+                rows={rows}
+                columns={orderedColumns}
+                format={format}
+                isLoading={isLoading}
+                colorPalette={colorPalette ?? themePalette}
+                chartConfig={chartConfig}
+                valueColumns={valueColumns}
+                dimensionColumns={dimensionColumns}
+                onSelect={onSelect}
+            />
+        </FilterPiece>
+    );
+};
+
+const TABLE_CHART_CONFIG: ChartConfig = { type: ChartType.TABLE, config: {} };
+
+type DataTableProps = DataPieceProps & {
+    // Columns to align and format as measures. Default: every number column.
+    valueColumns?: string[];
+};
+
+/** A table from rows that host code supplies. */
+const DataTable: FC<DataTableProps> = ({
+    rows,
+    columns,
+    format,
+    isLoading,
+    colorPalette,
+    valueColumns,
+    ...pieceProps
+}) => {
+    const { palette: themePalette } = useLightdashTheme();
+    const measures = useMemo(
+        () =>
+            valueColumns ??
+            resolveColumns(rows, columns)
+                .filter((column) => column.type === 'number')
+                .map((column) => column.name),
+        [valueColumns, rows, columns],
+    );
+    return (
+        <FilterPiece {...pieceProps}>
+            <DataVisualization
+                rows={rows}
+                columns={columns}
+                format={format}
+                isLoading={isLoading}
+                colorPalette={colorPalette ?? themePalette}
+                chartConfig={TABLE_CHART_CONFIG}
+                valueColumns={measures}
+            />
+        </FilterPiece>
+    );
+};
+
+type DataPivotTableProps = DataPieceProps & {
+    // Columns that stay as row headers.
+    rowFields: string[];
+    // The column whose values become the table's columns.
+    columnField: string;
+    // One or more numeric columns to show under each column value.
+    value: string | string[];
+};
+
+/** A pivot table from long rows: row headers, and one column per value. */
+const DataPivotTable: FC<DataPivotTableProps> = ({
+    rows,
+    columns,
+    format,
+    isLoading,
+    colorPalette,
+    rowFields,
+    columnField,
+    value,
+    ...pieceProps
+}) => {
+    const { palette: themePalette } = useLightdashTheme();
+    const pivoted = useMemo(
+        () =>
+            pivotRows({
+                rows,
+                columns: resolveColumns(rows, columns),
+                groupBy: rowFields,
+                breakBy: columnField,
+                values: Array.isArray(value) ? value : [value],
+            }),
+        [rows, columns, rowFields, columnField, value],
+    );
+    return (
+        <FilterPiece {...pieceProps}>
+            <DataVisualization
+                rows={pivoted.rows}
+                columns={pivoted.columns}
+                format={format}
+                isLoading={isLoading}
+                colorPalette={colorPalette ?? themePalette}
+                chartConfig={TABLE_CHART_CONFIG}
+                valueColumns={pivoted.valueColumns}
+                dimensionColumns={rowFields}
+            />
+        </FilterPiece>
+    );
+};
+
+type TypedDataChartProps = Omit<DataChartProps, 'chartType'>;
+
+type WidgetBaseProps = Omit<WidgetFrameProps, 'children'>;
+
+type ChartWidgetProps = WidgetBaseProps & ChartProps;
+type DataChartWidgetProps = WidgetBaseProps & DataChartProps;
+
+const splitWidgetProps = <T extends WidgetBaseProps>({
+    title,
+    description,
+    styleOptions,
+    height,
+    ...rest
+}: T) => ({ frame: { title, description, styleOptions, height }, rest });
+
+/**
+ * A saved chart by its id, in a frame. The frame takes the chart's name and
+ * description from Lightdash unless the host sets them.
+ */
+const ChartWidget: FC<ChartWidgetProps> = (props) => {
+    const { frame, rest } = splitWidgetProps(props);
+    const { token: tokenOrTokenPromise, instanceUrl } = useSdkConnection(rest);
+    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise, {
+        type: 'chart',
+        savedChartUuid: rest.id,
+    });
+    const needsModel =
+        frame.title === undefined || frame.description === undefined;
+    const model = useChartModel(
+        {
+            instanceUrl,
+            projectUuid: tokenContext?.projectUuid,
+            auth: tokenContext
+                ? { type: 'embedToken', token: tokenContext.token }
+                : undefined,
+        },
+        { chartUuid: rest.id },
+        { enabled: !!tokenContext && needsModel },
+    );
+    return (
+        <WidgetFrame
+            {...frame}
+            title={frame.title ?? model.data?.name}
+            description={
+                frame.description ?? model.data?.description ?? undefined
+            }
+        >
+            <Chart {...rest} />
+        </WidgetFrame>
+    );
+};
+
+/** A chart from host rows, in a titled frame. */
+const DataChartWidget: FC<DataChartWidgetProps> = (props) => {
+    const { frame, rest } = splitWidgetProps(props);
+    return (
+        <WidgetFrame {...frame}>
+            <DataChart {...rest} />
+        </WidgetFrame>
+    );
+};
+
+type PivotTableWidgetProps = WidgetBaseProps & DataPivotTableProps;
+
+/** A pivot table from host rows, in a titled frame. */
+const PivotTableWidget: FC<PivotTableWidgetProps> = (props) => {
+    const { frame, rest } = splitWidgetProps(props);
+    return (
+        <WidgetFrame {...frame}>
+            <DataPivotTable {...rest} />
+        </WidgetFrame>
+    );
+};
+
+type CustomWidgetFrameProps = WidgetBaseProps &
+    Pick<DataPieceProps, 'rows' | 'columns'> & {
+        // A type registered through `useCustomWidgets` or the provider.
+        customWidgetType: string;
+        options?: Record<string, unknown>;
+        onSelect?: DataChartProps['onSelect'];
+    };
+
+type WidgetProps =
+    | ({ widgetType: 'chart' } & ChartWidgetProps)
+    | ({ widgetType: 'dataChart' } & DataChartWidgetProps)
+    | ({ widgetType: 'pivot' } & PivotTableWidgetProps)
+    | ({ widgetType: 'custom' } & CustomWidgetFrameProps);
+
+/**
+ * One entry point for every widget kind. A `custom` widget is drawn by the
+ * component the host registered for its type.
+ */
+const Widget: FC<WidgetProps> = (props) => {
+    const registry = useOptionalCustomWidgets();
+    switch (props.widgetType) {
+        case 'chart': {
+            const { widgetType: _chart, ...chartProps } = props;
+            return <ChartWidget {...chartProps} />;
+        }
+        case 'dataChart': {
+            const { widgetType: _dataChart, ...dataChartProps } = props;
+            return <DataChartWidget {...dataChartProps} />;
+        }
+        case 'pivot': {
+            const { widgetType: _pivot, ...pivotProps } = props;
+            return <PivotTableWidget {...pivotProps} />;
+        }
+        case 'custom': {
+            const { frame, rest } = splitWidgetProps(props);
+            const Custom = registry?.getCustomWidget(rest.customWidgetType);
+            return (
+                <WidgetFrame {...frame}>
+                    {Custom ? (
+                        <Custom
+                            rows={rest.rows}
+                            columns={resolveColumns(rest.rows, rest.columns)}
+                            options={rest.options ?? {}}
+                            onSelect={rest.onSelect}
+                        />
+                    ) : (
+                        <p role="alert" style={{ margin: 0, padding: 14 }}>
+                            No custom widget is registered for “
+                            {rest.customWidgetType}”.
+                        </p>
+                    )}
+                </WidgetFrame>
+            );
+        }
+        default:
+            return assertUnreachable(props, 'Unknown widget type');
+    }
+};
+
+type DrilldownChartProps = Omit<DataPieceProps, 'rows' | 'columns'> & {
+    exploreName: string;
+    // Dimension field ids to drill through, from the widest to the narrowest.
+    paths: string[];
+    // Metric field ids to show at every level.
+    metrics: string[];
+    chartType?: DataChartType;
+    // Filters that apply at every level, under the picks of the viewer.
+    filters?: LightdashQueryFilter[];
+    // Display names for the dimensions in the breadcrumbs.
+    labels?: Record<string, string>;
+    limit?: number;
+    onChange?: UseDrilldownOptions['onChange'];
+};
+
+/**
+ * One chart that a viewer drills through. A click on a data point filters by
+ * that value and groups by the next dimension; the breadcrumbs go back up.
+ * Each level is a governed query on the explore of the token.
+ */
+const DrilldownChart: FC<DrilldownChartProps> = ({
+    exploreName,
+    paths,
+    metrics,
+    chartType = 'column',
+    filters = [],
+    labels,
+    limit,
+    onChange,
+    ...pieceProps
+}) => {
+    const { token: tokenOrTokenPromise, instanceUrl } =
+        useSdkConnection(pieceProps);
+    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+    const drilldown = useDrilldown({ paths, onChange });
+    const query = useMetricQuery(
+        {
+            instanceUrl,
+            projectUuid: tokenContext?.projectUuid,
+            auth: tokenContext
+                ? { type: 'embedToken', token: tokenContext.token }
+                : undefined,
+        },
+        {
+            exploreName,
+            dimensions: [drilldown.dimension],
+            metrics,
+            filters: [...filters, ...drilldown.filters],
+            sorts: [{ field: drilldown.dimension }],
+            limit,
+        },
+        { enabled: !!tokenContext },
+    );
+    // The category shows the server's display text; a click maps it back to
+    // the raw value, which is what the filter of the next level needs.
+    const display = useMemo(() => {
+        const { dimension } = drilldown;
+        const rawByLabel = new Map<string, DrilldownStep['value']>();
+        const rows = (query.data?.rows ?? []).map((row, index) => {
+            const label =
+                query.data?.formattedRows[index]?.[dimension] ??
+                String(row[dimension]);
+            rawByLabel.set(label, row[dimension]);
+            return { ...row, [dimension]: label };
+        });
+        const columns = (query.data?.columns ?? []).map((column) => ({
+            ...column,
+            type: column.name === dimension ? ('string' as const) : column.type,
+            label: labels?.[column.name] ?? column.label,
+        }));
+        return { rows, columns, rawByLabel };
+    }, [drilldown, labels, query.data]);
+    const [stepLabels, setStepLabels] = useState<string[]>([]);
+
+    return (
+        <div
+            data-lightdash-drilldown-widget=""
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                height: '100%',
+            }}
+        >
+            <DrilldownBreadcrumbs
+                steps={drilldown.steps.map((step, index) => ({
+                    ...step,
+                    value: stepLabels[index] ?? step.value,
+                }))}
+                currentDimension={drilldown.dimension}
+                labels={labels}
+                onSelect={(level) => {
+                    setStepLabels((current) => current.slice(0, level));
+                    drilldown.goTo(level);
+                }}
+            />
+            {query.error ? (
+                <p role="alert" style={{ margin: 0 }}>
+                    {query.error.message}
+                </p>
+            ) : (
+                <div style={{ flex: 1, minHeight: 0 }}>
+                    <DataChart
+                        {...pieceProps}
+                        rows={display.rows}
+                        columns={display.columns}
+                        isLoading={query.isLoading}
+                        chartType={chartType}
+                        dataOptions={{
+                            category: drilldown.dimension,
+                            value: metrics,
+                        }}
+                        onSelect={({ row }) => {
+                            const label = String(row[drilldown.dimension]);
+                            if (!drilldown.canDrill) return;
+                            if (!display.rawByLabel.has(label)) return;
+                            setStepLabels((current) => [
+                                ...current.slice(0, drilldown.steps.length),
+                                label,
+                            ]);
+                            drilldown.drill(
+                                display.rawByLabel.get(label) ?? null,
+                            );
+                        }}
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
+
+const typedDataChart = (chartType: DataChartType, displayName: string) => {
+    const Component: FC<TypedDataChartProps> = (props) => (
+        <DataChart {...props} chartType={chartType} />
+    );
+    Component.displayName = displayName;
+    return Component;
+};
+
+const BarChart = typedDataChart('bar', 'BarChart');
+const ColumnChart = typedDataChart('column', 'ColumnChart');
+const LineChart = typedDataChart('line', 'LineChart');
+const AreaChart = typedDataChart('area', 'AreaChart');
+const ScatterChart = typedDataChart('scatter', 'ScatterChart');
+const PieChart = typedDataChart('pie', 'PieChart');
+const FunnelChart = typedDataChart('funnel', 'FunnelChart');
+const KpiChart = typedDataChart('kpi', 'KpiChart');
+const TreemapChart = typedDataChart('treemap', 'TreemapChart');
+const GaugeChart = typedDataChart('gauge', 'GaugeChart');
+const SankeyChart = typedDataChart('sankey', 'SankeyChart');
+const MapChart = typedDataChart('map', 'MapChart');
+
+const dashboardHelpers = {
+    addFilter,
+    addFilters,
+    removeFilter,
+    removeFilters,
+    replaceFilter,
+};
+
 const Lightdash = {
+    Provider,
+    useLightdashConfig,
+    useContentToken,
+    DataChart,
+    DataTable,
+    DataPivotTable,
+    BarChart,
+    ColumnChart,
+    LineChart,
+    AreaChart,
+    ScatterChart,
+    PieChart,
+    FunnelChart,
+    KpiChart,
+    TreemapChart,
+    GaugeChart,
+    SankeyChart,
+    MapChart,
+    FilterTile,
+    MemberFilterTile,
+    DateRangeFilterTile,
+    RelativeDateFilterTile,
+    CriteriaFilterTile,
+    FiltersPanel,
+    Widget,
+    ChartWidget,
+    DataChartWidget,
+    PivotTableWidget,
+    WidgetFrame,
+    CustomWidgetsProvider,
+    useCustomWidgets,
+    ThemeProvider,
+    useLightdashTheme,
+    LoadingOverlay,
+    AgentInsights,
+    useAgentAnswer,
+    useAgentSuggestions,
+    useSyncedState,
+    useChartModel,
+    useChartQuery,
+    chartModelTranslator,
+    useLightdashQueryCache,
+    useMetricQueryPivot,
+    extractFields,
+    formatDate,
+    formatNumber,
+    formatRows,
+    getDefaultDateFormat,
+    createLinearGradient,
+    createRadialGradient,
+    GradientDirections,
+    isGradient,
+    isLinearGradient,
+    isRadialGradient,
+    LightdashFrame,
+    ContextMenu,
+    DrilldownChart,
+    DrilldownWidget,
+    DrilldownBreadcrumbs,
+    useMetricQuery,
+    useDrilldown,
+    useJumpToDashboard,
+    ComposedDashboard,
+    useComposedDashboard,
+    useDashboardModel,
+    useExploreFields,
+    useFieldValues,
+    useLightdashFetch,
+    dashboardModelToComposed,
+    dashboardHelpers,
+    createDefaultLayout,
+    DataApp,
+    DataAppComponent,
     AiAgent,
     Dashboard,
     DashboardBuilder,
@@ -943,6 +2127,79 @@ const Lightdash = {
 
 // ts-unused-exports:disable-next-line
 export {
+    Provider,
+    useLightdashConfig,
+    useContentToken,
+    DataChart,
+    DataTable,
+    DataPivotTable,
+    BarChart,
+    ColumnChart,
+    LineChart,
+    AreaChart,
+    ScatterChart,
+    PieChart,
+    FunnelChart,
+    KpiChart,
+    TreemapChart,
+    GaugeChart,
+    SankeyChart,
+    MapChart,
+    FilterTile,
+    MemberFilterTile,
+    DateRangeFilterTile,
+    RelativeDateFilterTile,
+    CriteriaFilterTile,
+    FiltersPanel,
+    Widget,
+    ChartWidget,
+    DataChartWidget,
+    PivotTableWidget,
+    WidgetFrame,
+    CustomWidgetsProvider,
+    useCustomWidgets,
+    ThemeProvider,
+    useLightdashTheme,
+    LoadingOverlay,
+    AgentInsights,
+    useAgentAnswer,
+    useAgentSuggestions,
+    useSyncedState,
+    useChartModel,
+    useChartQuery,
+    chartModelTranslator,
+    useLightdashQueryCache,
+    useMetricQueryPivot,
+    extractFields,
+    formatDate,
+    formatNumber,
+    formatRows,
+    getDefaultDateFormat,
+    createLinearGradient,
+    createRadialGradient,
+    GradientDirections,
+    isGradient,
+    isLinearGradient,
+    isRadialGradient,
+    LightdashFrame,
+    ContextMenu,
+    DrilldownChart,
+    DrilldownWidget,
+    DrilldownBreadcrumbs,
+    useMetricQuery,
+    useDrilldown,
+    useJumpToDashboard,
+    ComposedDashboard,
+    useComposedDashboard,
+    useDashboardModel,
+    useExploreFields,
+    useFieldValues,
+    useLightdashFetch,
+    dashboardModelToComposed,
+    dashboardHelpers,
+    createDefaultLayout,
+    DataApp,
+    DataAppComponent,
     AiAgent,
     Chart,
     Dashboard,
@@ -957,9 +2214,72 @@ export {
 export type {
     SdkUiOverrides,
     UiStringKey,
+    SdkFilter,
+    SdkChartSelection,
+    ChartProps,
+    DashboardProps,
+    ProviderProps,
+    DataChartProps,
+    DataTableProps,
+    DataPivotTableProps,
+    DataChartSelection,
+    DataChartType,
+    DataColumn,
+    DataFormatter,
+    DataOptions,
+    DataRow,
+    FilterTileProps,
+    FiltersPanelProps,
+    ContextMenuItem,
+    ContextMenuSection,
+    ChartWidgetProps,
+    DataChartWidgetProps,
+    PivotTableWidgetProps,
+    WidgetProps,
+    ChartModelQueryParams,
+    ChartModelDataChartProps,
+    ChartModelDataTableProps,
+    ChartModelDataPivotTableProps,
+    ChartModelDataChartWidgetProps,
+    ChartModelPivotTableWidgetProps,
+    ChartModelWidgetProps,
+    UseChartQueryArgs,
+    UseChartQueryResult,
+    WidgetFrameProps,
+    WidgetStyleOptions,
+    CustomWidgetComponent,
+    CustomWidgetProps,
+    AgentAnswer,
+    UseAgentAnswerResult,
+    LightdashTheme,
+    LightdashChartFields,
+    LightdashChartModel,
+    DateGranularity,
+    Gradient,
+    GradientStop,
+    LinearGradient,
+    RadialGradient,
+    LightdashFrameEvent,
+    LightdashFrameEventName,
+    LightdashFrameOptions,
+    DrilldownChartProps,
+    DrilldownFilter,
+    DrilldownStep,
+    UseDrilldownOptions,
+    UseDrilldownResult,
+    JumpToDashboardTarget,
+    ComposedDashboardProps,
+    ComposedDashboardResult,
+    ComposedDashboardChangeEvent,
+    ComposedLayout,
+    ComposedWidget,
+    ComposedWidgetState,
+    UseComposedDashboardOptions,
     LightdashAiAgentThread,
     LightdashAiAgentThreadResults,
     LightdashApiClientConfig,
+    EmbedContentTokenRequest,
+    EmbedContentToken,
     LightdashContentItem,
     LightdashContentResults,
     LightdashSdkApiAuth,
@@ -968,3 +2288,4 @@ export type {
 };
 // ts-unused-exports:disable-next-line
 export default Lightdash;
+export type { DataAppProps, NativeDataAppModule } from './DataApp';

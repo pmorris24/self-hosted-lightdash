@@ -209,4 +209,25 @@ const dtsBuild = {
     ],
 };
 
-export default [mainBuild, dtsBuild];
+const dataAppInput = resolve(__dirname, 'sdk', 'DataApp.tsx');
+const dataAppBuild = {
+    input: dataAppInput,
+    external,
+    output: [
+        { file: resolve(distDir, 'data-app.es.js'), format: 'es' },
+        {
+            file: resolve(distDir, 'data-app.cjs.js'),
+            format: 'cjs',
+            exports: 'named',
+        },
+    ],
+    plugins: [esbuild({ target: 'es2020', jsx: 'automatic' })],
+};
+const dataAppTypes = {
+    input: dataAppInput,
+    external,
+    output: { file: resolve(distDir, 'data-app.d.ts'), format: 'es' },
+    plugins: [dts({ tsconfig: resolve(__dirname, 'tsconfig.json') })],
+};
+
+export default [mainBuild, dtsBuild, dataAppBuild, dataAppTypes];

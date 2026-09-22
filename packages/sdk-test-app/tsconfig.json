@@ -13,6 +13,7 @@
             "@lightdash/common": ["../common/src/index.ts"],
             "@lightdash/common/*": ["../common/src/*"],
             "@lightdash/sdk": ["../frontend/sdk/index.tsx"],
+            "@lightdash/query-sdk": ["../query-sdk/src/index.ts"],
             "@lightdash/sdk/sdk.css": ["../frontend/sdk/dist/sdk.css"]
         },
         "types": [

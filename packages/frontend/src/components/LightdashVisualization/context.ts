@@ -7,6 +7,7 @@ import type {
     ItemsMap,
     MetricQuery,
     ParametersValuesMap,
+    ResultRow,
     StackType,
 } from '@lightdash/common';
 import type { Map as LeafletMap } from 'leaflet';
@@ -52,6 +53,9 @@ type VisualizationContext = {
         e: EchartsSeriesClickEvent,
         series: EChartsSeries[],
     ) => void;
+    // Pie and funnel: a viewer clicked a slice. When set, it takes the place
+    // of the built-in context menu.
+    onDataPointSelect?: (point: DataPointSelection) => void;
     setChartType: (value: ChartType) => void;
     setPivotDimensions: (value: string[] | undefined) => void;
 
@@ -81,3 +85,10 @@ type VisualizationContext = {
 const Context = createContext<VisualizationContext | undefined>(undefined);
 
 export default Context;
+
+export type DataPointSelection = {
+    // The result rows behind the clicked slice.
+    rows: ResultRow[];
+    // Viewport pixels.
+    position: { left: number; top: number };
+};

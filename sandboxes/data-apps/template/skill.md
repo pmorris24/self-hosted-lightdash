@@ -14,6 +14,10 @@ Don't verify your own output. **After you Write or Edit a file, do not Read it b
 
 ## Environment Constraints
 
+### Native React component contract
+
+For a new data app, keep `src/data-app.tsx` as its public composition contract. Read `references/native-components.md` before the first build. Use `defineDataApp` from `@/lib/dataApp` and the existing `@lightdash/query-sdk` for data access. Export a shared Provider, the complete App, and individually usable components. The default `src/App.jsx` renders that same definition. Existing apps without this contract continue to work in the viewer; add the contract when native exports are requested. Reusable visualizations follow their separate host-provided-data contract above.
+
 - **`main.jsx` renders the default export of `src/App` (the shipped `src/App.jsx`) — that file must render your finished app.** Keep `src/App.jsx` as a thin composition root that imports and lays out your components (or re-exports your real root: `export { default } from './App.tsx';`). You can't delete files, so a component you forget to wire into `src/App.jsx` is dead weight and the page stays blank.
 - **Split the app into components.** Each chart, table, KPI row, or page section lives in its own file under `src/components/`, kept under ~250 lines. Never author the whole app as one giant file: a monolith forces full-file rewrites on every change and risks truncating mid-Write.
 - **Write independent files in one message.** When several new files don't depend on each other's final content, emit their Write calls together in a single message instead of one per turn.
@@ -41,6 +45,7 @@ Available at `@/components/ui/<name>`:
 |---|---|---|
 | `@/lib/theme` | `CHART_COLORS: string[]` — the canonical chart palette | Visual Design |
 | `@/lib/format` | `formatField`, `formatDate`, `formatTimestamp`, `formatNumber`, `getColumn` (+ types `FormatVariant`, `FormatDateOptions`) | Formatting |
+| `@/lib/dataApp` | `defineDataApp`, type `DataAppDefinition` — explicit provider, app, and component exports | Native React component contract |
 | `@/lib/filters` | `useGlobalFilters()`, type `ScopedFilter`; `FilterProvider` is already mounted at the root | Global filters |
 | `@/lib/floating` | `ChartTooltipSurface` — required wrapper for custom Recharts tooltips | Floating surfaces |
 | `@/lib/ErrorBoundary` | `ErrorBoundary` — wrap each data-driven card so one render error can't blank the app | — |

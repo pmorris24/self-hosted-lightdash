@@ -1,13 +1,21 @@
 import type { ComponentType } from 'react';
 import type { EmbedConfigState } from '../hooks/useEmbedConfig';
 import { AiAgentExamplePage } from './AiAgentExamplePage';
+import { ComposedDashboardExamplePage } from './ComposedDashboardExamplePage';
+import { CompositionExamplePage } from './CompositionExamplePage';
+import { ContentByIdExamplePage } from './ContentByIdExamplePage';
 import { ContentCatalogExamplePage } from './ContentCatalogExamplePage';
 import { DashboardBuilderExamplePage } from './DashboardBuilderExamplePage';
+import { DataChartsExamplePage } from './DataChartsExamplePage';
 import { FiltersExamplePage } from './FiltersExamplePage';
 import { HostStylesExamplePage } from './HostStylesExamplePage';
 import { I18nExamplePage } from './I18nExamplePage';
 import { MetricsCatalogExamplePage } from './MetricsCatalogExamplePage';
 import { PaletteUuidExamplePage } from './PaletteUuidExamplePage';
+import { DrilldownExamplePage } from './DrilldownExamplePage';
+import { WidgetsThemeExamplePage } from './WidgetsThemeExamplePage';
+import { FrameExamplePage } from './FrameExamplePage';
+import { QueryToChartExamplePage } from './QueryToChartExamplePage';
 import { ThemeExamplePage } from './ThemeExamplePage';
 import { TokenRotationExamplePage } from './TokenRotationExamplePage';
 
@@ -21,6 +29,84 @@ export type ExampleDefinition = {
 };
 
 export const examples: ExampleDefinition[] = [
+    {
+        slug: 'content-by-id',
+        path: '/examples/content-by-id',
+        title: 'Content by id demo',
+        description:
+            'A saved dashboard and saved charts by id, and a chart model translated into props for the data pieces.',
+        sourcePath:
+            'packages/sdk-test-app/src/examples/ContentByIdExamplePage.tsx',
+        component: ContentByIdExamplePage,
+    },
+    {
+        slug: 'widgets-theme',
+        path: '/examples/widgets-theme',
+        title: 'Widgets and theme demo',
+        description:
+            'One theme for every piece, widget frames for charts and pivot tables, a custom widget type, a chart model, and a cached pivot query.',
+        sourcePath:
+            'packages/sdk-test-app/src/examples/WidgetsThemeExamplePage.tsx',
+        component: WidgetsThemeExamplePage,
+    },
+    {
+        slug: 'frame',
+        path: '/examples/frame',
+        title: 'Frame script demo',
+        description:
+            'A framed dashboard that the host page controls: it sets filters and the theme, and it receives events with values.',
+        sourcePath: 'packages/sdk-test-app/src/examples/FrameExamplePage.tsx',
+        component: FrameExamplePage,
+    },
+    {
+        slug: 'drilldown',
+        path: '/examples/drilldown',
+        title: 'Drill down demo',
+        description:
+            'One chart a viewer drills through: a click filters by the value and groups by the next dimension, with breadcrumbs to go back.',
+        sourcePath:
+            'packages/sdk-test-app/src/examples/DrilldownExamplePage.tsx',
+        component: DrilldownExamplePage,
+    },
+    {
+        slug: 'query-to-chart',
+        path: '/examples/query-to-chart',
+        title: 'Saved chart query demo',
+        description:
+            "Run a saved chart's governed query from host code with a chart token, then draw the rows with data-fed components.",
+        sourcePath:
+            'packages/sdk-test-app/src/examples/QueryToChartExamplePage.tsx',
+        component: QueryToChartExamplePage,
+    },
+    {
+        slug: 'data-charts',
+        path: '/examples/data-charts',
+        title: 'Charts from rows demo',
+        description:
+            'Draw charts and a table with the Lightdash renderer from rows the host page supplies.',
+        sourcePath: 'packages/sdk-test-app/src/examples/DataChartsExamplePage.tsx',
+        component: DataChartsExamplePage,
+    },
+    {
+        slug: 'composed-dashboard',
+        path: '/examples/composed-dashboard',
+        title: 'Composed dashboard demo',
+        description:
+            'Read a saved dashboard, then keep its charts coordinated in a host-owned layout with useComposedDashboard.',
+        sourcePath:
+            'packages/sdk-test-app/src/examples/ComposedDashboardExamplePage.tsx',
+        component: ComposedDashboardExamplePage,
+    },
+    {
+        slug: 'composition',
+        path: '/examples/composition',
+        title: 'Composition demo',
+        description:
+            'Place several saved charts on one host page, each with its own chart token.',
+        sourcePath:
+            'packages/sdk-test-app/src/examples/CompositionExamplePage.tsx',
+        component: CompositionExamplePage,
+    },
     {
         slug: 'ai-agent',
         path: '/examples/ai-agent',

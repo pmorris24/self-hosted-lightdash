@@ -13,6 +13,8 @@ import { useProjectUuid } from '../../../../../hooks/useProjectUuid';
 import { useSavedQuery } from '../../../../../hooks/useSavedQuery';
 import MinimalSavedExplorer from '../../../../../pages/MinimalSavedExplorer';
 import useApp from '../../../../../providers/App/useApp';
+import { useEmbedContentHeight } from '../../hooks/useEmbedContentHeight';
+import fitContentStyles from '../../styles/fitContent.module.css';
 
 const MinimalChartContent = memo(() => {
     const { health } = useApp();
@@ -71,6 +73,7 @@ type Props = {
 };
 
 const EmbedChart: FC<Props> = ({ containerStyles, savedQueryUuid }) => {
+    const fitContent = useEmbedContentHeight();
     const projectUuid = useProjectUuid();
     const { data, isInitialLoading, isError, error } = useSavedQuery({
         uuidOrSlug: savedQueryUuid,
@@ -107,6 +110,8 @@ const EmbedChart: FC<Props> = ({ containerStyles, savedQueryUuid }) => {
 
     return (
         <div
+            ref={fitContent.ref}
+            className={fitContent.enabled ? fitContentStyles.chart : undefined}
             style={
                 containerStyles ?? {
                     height: '100vh',

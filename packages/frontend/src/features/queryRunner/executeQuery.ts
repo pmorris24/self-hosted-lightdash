@@ -9,6 +9,7 @@ import {
     type RawResultRow,
 } from '@lightdash/common';
 import { lightdashApi } from '../../api';
+import { getCurrentEmbedInstanceId } from '../../utils/embedInstance';
 import { getResultsFromStream } from '../../utils/request';
 import type { ResultsAndColumns } from '../sqlRunner/hooks/useSqlQueryRun';
 
@@ -16,12 +17,15 @@ export const pollForResults = async (
     projectUuid: string,
     queryUuid: string,
     backoffMs: number = 250,
+    // Read once when the poll starts: later rounds run after a timer.
+    embedInstanceId: string | undefined = getCurrentEmbedInstanceId(),
 ): Promise<ApiGetAsyncQueryResults> => {
     const results = await lightdashApi<ApiGetAsyncQueryResults>({
         url: `/projects/${projectUuid}/query/${queryUuid}`,
         version: 'v2',
         method: 'GET',
         body: undefined,
+        embedInstanceId,
     });
 
     if (
@@ -32,7 +36,12 @@ export const pollForResults = async (
         // Implement backoff: 250ms -> 500ms -> 1000ms (then stay at 1000ms)
         const nextBackoff = Math.min(backoffMs * 2, 1000);
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
-        return pollForResults(projectUuid, queryUuid, nextBackoff);
+        return pollForResults(
+            projectUuid,
+            queryUuid,
+            nextBackoff,
+            embedInstanceId,
+        );
     }
 
     return results;

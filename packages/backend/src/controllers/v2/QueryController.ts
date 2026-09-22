@@ -439,9 +439,12 @@ export class QueryController extends BaseController {
 
         const context = body.context ?? getContextFromHeader(req);
 
+        // A dashboard token may run the charts on its dashboard; the service
+        // checks that the chart belongs to it.
         if (
             isJwtUser(req.account!) &&
-            req.account!.access.content.type !== 'chart'
+            req.account!.access.content.type !== 'chart' &&
+            req.account!.access.content.type !== 'dashboard'
         ) {
             throw new ForbiddenError('Feature not available for this JWT');
         }

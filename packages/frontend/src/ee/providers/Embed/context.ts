@@ -5,6 +5,7 @@ import { type EmbedContext, type EmbedExploreChart } from './types';
 const EmbedProviderContext = createContext<EmbedContext>({
     embedToken: undefined,
     filters: undefined,
+    hasHostFilters: false,
     projectUuid: undefined,
     content: undefined,
     writeActions: undefined,

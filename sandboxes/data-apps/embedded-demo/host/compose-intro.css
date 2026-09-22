@@ -1,0 +1,39 @@
+/* This file loads before host.css; selectors carry .proposal-app where they must win. */
+.proposal-app .compose-intro-head{padding-top:40px}
+.proposal-app .compose-intro-head h1{font-size:40px;letter-spacing:-1px;line-height:1.1;margin-top:12px}
+.native-tab code{font:.92em ui-monospace,SFMono-Regular,monospace;color:var(--ui-purple)}
+.native-tab .code-example code{color:inherit}
+.compose-layout{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:16px;padding-bottom:16px}
+.compose-layout>.compose-slot:last-child{grid-column:1 / -1}
+.compose-side{display:grid;gap:16px;align-content:start}
+.compose-slot{margin:0;border:1px solid var(--ui-rail);border-radius:6px;background:var(--ui-bg);overflow:hidden;display:flex;flex-direction:column}
+.compose-slot figcaption,.compose-host-panel header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--ui-rail);font-size:13px;color:var(--ui-text)}
+.compose-slot figcaption code,.compose-host-panel header code{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--ui-purple-soft);color:var(--ui-purple)}
+.compose-host-panel header code{background:var(--ui-subtle);color:var(--ui-muted);border:1px solid var(--ui-rail)}
+.compose-slot-surface{height:320px;position:relative;overflow:hidden}
+.compose-layout>.compose-slot:first-child .compose-slot-surface{height:100%;min-height:420px}
+.compose-side .compose-slot-surface{height:260px}
+.compose-slot-state{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:var(--ui-muted)}
+.compose-slot-surface .notice{margin:16px}
+.compose-host-panel{border:1px dashed var(--ui-border);border-radius:6px;background:var(--ui-surface)}
+.compose-host-panel ul{list-style:none;margin:0;padding:10px 14px;display:grid;gap:8px;font-size:13px}
+.compose-host-panel label{display:flex;gap:8px;align-items:flex-start;color:var(--ui-text)}
+.compose-host-panel span[data-done]{text-decoration:line-through;color:var(--ui-muted)}
+.compose-host-panel form{display:flex;gap:8px;padding:0 14px 14px}
+.compose-host-panel form input{flex:1;min-width:0;padding:8px 10px;font:13px Inter,sans-serif;color:var(--ui-text);background:var(--ui-field);border:1px solid var(--ui-border);border-radius:4px}
+.compose-built{max-width:1180px;margin:56px auto 0;padding-top:40px;border-top:1px dashed var(--ui-rail)}
+.compose-built h2{font-size:28px;line-height:1.15;letter-spacing:-.5px;margin-top:12px}
+.compose-built ol{list-style:none;padding:0;margin:28px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0;border:1px solid var(--ui-rail);border-radius:6px;overflow:hidden}
+.compose-built li{padding:20px;border-right:1px solid var(--ui-rail);border-bottom:1px solid var(--ui-rail);margin:0 -1px -1px 0}
+.compose-built h3{font:500 15px/1.3 ui-monospace,SFMono-Regular,monospace;color:var(--ui-text);margin:12px 0 8px}
+.compose-built li:nth-child(n+3) h3{font-family:'Britti Sans',Inter,sans-serif;font-size:16px}
+.compose-built p{font-size:13px;line-height:1.6;color:var(--ui-muted)}
+.compose-built-status{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--ui-rail);color:var(--ui-purple)}
+.compose-built-status[data-released]{color:var(--ui-good)}
+.native-tab .sdk-argument h2,.native-tab .sdk-code-row h2{font-size:28px;line-height:1.15;letter-spacing:-.5px;margin-top:12px}
+@media(max-width:950px){.compose-layout{grid-template-columns:1fr}.compose-layout>.compose-slot:first-child .compose-slot-surface{min-height:320px}}
+.compose-layout>.compose-slot:last-child{grid-column:auto}
+.compose-decision{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px 0}
+.compose-decision button{padding:7px 12px;font:13px Inter,sans-serif;color:var(--ui-text);background:var(--ui-field);border:1px solid var(--ui-border);border-radius:4px}
+.compose-decision button[aria-checked=true]{background:var(--ui-action);color:var(--ui-action-text);border-color:var(--ui-action)}
+.compose-decision-note{padding:10px 14px 14px;font-size:12px;color:var(--ui-muted)}

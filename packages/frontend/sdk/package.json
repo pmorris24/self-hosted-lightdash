@@ -11,6 +11,11 @@
         "dist"
     ],
     "exports": {
+        "./data-app": {
+            "types": "./dist/data-app.d.ts",
+            "import": "./dist/data-app.es.js",
+            "require": "./dist/data-app.cjs.js"
+        },
         ".": {
             "types": "./dist/sdk.d.ts",
             "require": "./dist/sdk.cjs.js",

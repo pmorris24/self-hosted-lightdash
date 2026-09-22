@@ -1,0 +1,49 @@
+/* This file loads before host.css; selectors carry .proposal-app where they must win. */
+.examples{display:grid;grid-template-columns:230px minmax(0,1fr);max-width:1380px;margin:0 auto;border:1px solid var(--ui-rail);border-radius:8px;background:var(--ui-subtle);overflow:hidden}
+.examples-list{display:flex;flex-direction:column;padding:14px 10px;border-right:1px solid var(--ui-rail);gap:2px}
+.examples-list-title{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ui-muted);padding:4px 10px 10px}
+.proposal-app .examples-list button{display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;border-radius:5px;background:transparent;color:var(--ui-muted);font:13px/1.35 Inter,sans-serif;text-align:left}
+.proposal-app .examples-list button:hover{background:var(--ui-bg);color:var(--ui-text)}
+.proposal-app .examples-list button[aria-current]{background:var(--ui-bg);color:var(--ui-text);box-shadow:inset 2px 0 0 var(--ui-purple)}
+.examples-list i,.example-status i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--ui-good)}
+.examples-list i[data-status=proposed],.example-status[data-status=proposed] i{background:var(--ui-purple)}
+.examples-list i[data-status=gap],.example-status[data-status=gap] i{background:var(--ui-bad)}
+.examples-body{min-width:0;padding:18px 20px 20px;background:var(--ui-bg)}
+.examples-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:16px}
+.proposal-app .examples-head h3{font:500 20px/1.25 'Britti Sans',Inter,sans-serif;letter-spacing:-.3px;color:var(--ui-text)}
+.examples-head p{font-size:13px;line-height:1.6;color:var(--ui-muted);margin-top:6px;max-width:720px}
+.example-status{flex:none;display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--ui-rail);border-radius:999px;font-size:12px;color:var(--ui-muted);white-space:nowrap}
+.examples-panes{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px;align-items:start}
+.examples-code pre{max-height:520px}
+.examples-preview{position:relative;min-height:520px;height:520px;border:1px solid var(--ui-rail);border-radius:6px;overflow:auto;overscroll-behavior:contain;background:var(--ui-bg)}
+.examples-preview[data-status=gap]{height:auto;min-height:0;border-style:dashed;background:var(--ui-subtle)}
+.examples-preview iframe{display:block;width:100%;height:100%;border:0;background:white}
+.examples-preview .notice{margin:16px}
+.examples-gap{padding:20px 22px;display:grid;gap:8px}
+.examples-gap p{font-size:14px;line-height:1.65;color:var(--ui-text)}
+.examples-gap .examples-gap-title{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ui-muted);margin-top:8px}
+.examples-gap .examples-gap-title:first-child{margin-top:0}
+.examples-state{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:var(--ui-muted)}
+.examples-host-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 14px;border-bottom:1px solid var(--ui-rail);font-size:12px;color:var(--ui-muted)}
+@media(max-width:1200px){.examples-panes{grid-template-columns:1fr}.examples-code pre{max-height:320px}}
+@media(max-width:800px){.examples{grid-template-columns:1fr}.examples-list{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--ui-rail)}.examples-list-title{width:100%;padding-bottom:4px}.examples-head{flex-direction:column}}
+.query-table{width:100%;border-collapse:collapse;font-size:13px}
+.query-table th,.query-table td{padding:11px 16px;text-align:right;border-bottom:1px solid var(--ui-rail);color:var(--ui-text)}
+.query-table th:first-child{text-align:left}
+.query-table thead th{font-weight:500;color:var(--ui-muted);background:var(--ui-subtle)}
+.query-table tbody th{font-weight:500}
+.query-chart{display:block;width:100%;height:auto;padding:12px}
+.query-chart text{font:11px Inter,sans-serif;fill:var(--ui-muted)}
+.query-grid{stroke:var(--ui-rail);stroke-dasharray:3 3}
+.query-bar{fill:var(--ui-purple-soft);stroke:var(--ui-purple)}
+.query-line{fill:none;stroke:var(--ui-text);stroke-width:2}
+.query-dot{fill:var(--ui-text)}
+.query-kpis{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--ui-rail)}
+.query-kpis>div{padding:16px 18px;border-right:1px solid var(--ui-rail)}
+.query-kpis>div:last-child{border-right:0}
+.query-kpis span{display:block;font-size:12px;color:var(--ui-muted)}
+.query-kpis strong{display:block;margin-top:6px;font:500 24px/1.2 'Britti Sans',Inter,sans-serif;color:var(--ui-text)}
+.compose-layout-example{padding:14px}
+.compose-layout-example .compose-slot-surface{min-height:340px}
+.query-result{transition:opacity .15s}
+.query-result[data-refreshing]{opacity:.45}

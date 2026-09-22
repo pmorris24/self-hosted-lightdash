@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { defineConfig, loadEnv } from 'vite';
 import svgr from 'vite-plugin-svgr';
+import { devTokens } from './devTokens';
 
 const sdkPackageJson = JSON.parse(
     readFileSync(resolve(__dirname, '../frontend/sdk/package.json'), 'utf-8'),
@@ -51,7 +52,7 @@ export default defineConfig(({ mode }) => {
         getLightdashProxyTarget(env.VITE_EMBED_URL);
 
     return {
-        plugins: [react(), svgr()],
+        plugins: [react(), svgr(), devTokens()],
         css: { postcss: { plugins: sdkPostcssPlugins } },
         optimizeDeps: {
             exclude: ['@lightdash/common', '@lightdash/common/src'],
@@ -93,6 +94,10 @@ export default defineConfig(({ mode }) => {
                         __dirname,
                         '../common/node_modules/free-email-domains/domains.js',
                     ),
+                },
+                {
+                    find: '@lightdash/query-sdk',
+                    replacement: resolve(__dirname, '../query-sdk/src/index.ts'),
                 },
                 {
                     find: '@lightdash/sdk/sdk.css',

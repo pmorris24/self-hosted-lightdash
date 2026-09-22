@@ -14,6 +14,7 @@ import {
     type ApiGetAsyncQueryResults,
     type ApiJobScheduledResponse,
     type ApiSuccessEmpty,
+    type DashboardFilters,
     type DateGranularity,
     type DownloadOptions,
     type ExecuteAsyncMetricQueryRequestParams,
@@ -30,6 +31,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lightdashApi } from '../api';
 import { pollForResults } from '../features/queryRunner/executeQuery';
 import { convertDateFilters } from '../utils/dateFilter';
+import { getCurrentEmbedInstanceId } from '../utils/embedInstance';
 import useQueryError from './useQueryError';
 
 export type QueryResultsProps = {
@@ -47,6 +49,9 @@ export type QueryResultsProps = {
     pivotConfiguration?: PivotConfiguration;
     pivotResults?: boolean;
     customSqlProvenanceChartUuid?: UUID;
+    // Host filters for an embedded saved chart. The server narrows the chart's
+    // own filters with them and drops fields the chart's explore lacks.
+    dashboardFilters?: DashboardFilters;
 };
 
 /**
@@ -183,6 +188,7 @@ const executeAsyncQuery = (
                 invalidateCache: data.invalidateCache,
                 parameters: data.parameters,
                 pivotResults: data.pivotResults,
+                dashboardFilters: data.dashboardFilters,
             },
             { signal },
         );
@@ -232,9 +238,16 @@ export const executeQueryAndWaitForResults = async (
 ) => {
     if (!data) throw new Error('Missing data');
 
+    // Read before the first await: the poll below runs after it.
+    const embedInstanceId = getCurrentEmbedInstanceId();
     const query = await executeAsyncQuery(data, undefined);
 
-    const results = await pollForResults(data.projectUuid, query.queryUuid);
+    const results = await pollForResults(
+        data.projectUuid,
+        query.queryUuid,
+        undefined,
+        embedInstanceId,
+    );
 
     if (
         results.status === QueryHistoryStatus.ERROR ||

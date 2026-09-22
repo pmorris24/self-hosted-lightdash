@@ -1,46 +1,63 @@
-/* Lets the grid size itself from its own width (cqw below). */
+/* Lets the grid size itself from its own width (cqw below). The well sits a
+   tone below the tiles; no single token is recessed in both schemes. */
 .gridViewport {
     container-type: inline-size;
+    padding: var(--well-padding);
+    border: 1px solid var(--mantine-color-default-border);
+    border-radius: var(--mantine-radius-md);
+    background-color: light-dark(
+        var(--mantine-color-ldGray-1),
+        var(--ld-color-page)
+    );
 }
 
-/* Always 4 columns and exactly 3 rows tall, however many widgets a tab has, so
-   the modal keeps one size. A row is a 16:9 preview plus the fixed-height meta
-   strip. More rows scroll; only a short screen makes it shorter. */
-.gridScroll {
+/* The modal's width follows from the screen's height: the tiles are 16:9, so 3
+   rows only fit if the modal is narrow enough. The grid inherits these. */
+.modalRoot {
     --tile-gap: var(--mantine-spacing-md);
     --tile-meta-height: 4rem;
+    --well-padding: var(--mantine-spacing-md);
+    --catalog-modal-y-offset: 5dvh;
+
+    /* 16.5rem is the header, toolbar, tabs and footer around the grid */
+    --grid-available-height: calc(
+        100dvh - 2 * var(--catalog-modal-y-offset) - 16.5rem - 2 *
+            var(--well-padding) - 2px
+    );
+    --grid-fit-width: calc(
+        (
+                (var(--grid-available-height) - 2 * var(--tile-gap) - 4px) / 3 -
+                    var(--tile-meta-height)
+            ) *
+            4 * 16 / 9 + 3 * var(--tile-gap)
+    );
+    --modal-body-padding: calc(
+        2 * var(--mantine-spacing-xl) + 2 * var(--well-padding) + 2px
+    );
+
+    --catalog-modal-size: min(
+        100rem,
+        92vw,
+        max(40rem, calc(var(--grid-fit-width) + var(--modal-body-padding)))
+    );
+}
+
+/* A short screen gives its height to the previews, so the tiles stay legible */
+@media (max-height: 60rem) {
+    .modalRoot {
+        --tile-meta-height: 3rem;
+        --catalog-modal-y-offset: 1rem;
+    }
+}
+
+/* Always 4 columns and exactly 3 rows tall, however many widgets a tab has. A
+   row is a 16:9 preview plus the fixed-height meta strip. More rows scroll. */
+.gridScroll {
     --tile-row-height: calc(
         (100cqw - 3 * var(--tile-gap)) / 4 * 0.5625 + var(--tile-meta-height)
     );
 
-    --grid-available-height: calc(90vh - 18rem);
-
-    height: min(
-        calc(3 * var(--tile-row-height) + 2 * var(--tile-gap) + 4px),
-        var(--grid-available-height)
-    );
-}
-
-/* On a short screen, stop at the last whole row instead of cutting one in half */
-@supports (height: round(down, 10px, 3px)) {
-    .gridScroll {
-        height: min(
-            calc(3 * var(--tile-row-height) + 2 * var(--tile-gap) + 4px),
-            max(
-                calc(var(--tile-row-height) + 4px),
-                calc(
-                    round(
-                            down,
-                            calc(
-                                var(--grid-available-height) + var(--tile-gap)
-                            ),
-                            calc(var(--tile-row-height) + var(--tile-gap))
-                        ) -
-                        var(--tile-gap) + 4px
-                )
-            )
-        );
-    }
+    height: calc(3 * var(--tile-row-height) + 2 * var(--tile-gap) + 4px);
 }
 
 .grid {
@@ -158,8 +175,8 @@
     gap: var(--mantine-spacing-sm);
     height: var(--tile-meta-height);
     padding: 0 var(--mantine-spacing-sm);
-    /* The muted fill sets the label apart from the chart above it */
-    background-color: var(--mantine-color-ldGray-1);
+    /* The surface tone: the well behind the tile is the muted one */
+    background-color: var(--mantine-color-body);
 }
 
 .metaText {

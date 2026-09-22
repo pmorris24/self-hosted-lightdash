@@ -289,10 +289,14 @@ const WidgetCatalogModal: FC<Props> = ({
             onClose={onClose}
             title="Widget catalog"
             icon={IconLayoutGrid}
-            size="min(100rem, 92vw)"
-            modalRootProps={{ closeOnClickOutside: false }}
+            size="var(--catalog-modal-size)"
+            modalRootProps={{
+                closeOnClickOutside: false,
+                className: classes.modalRoot,
+                yOffset: 'var(--catalog-modal-y-offset)',
+            }}
             // The grid scrolls, not the body
-            bodyScrollAreaMaxHeight="calc(100vh - 10rem)"
+            bodyScrollAreaMaxHeight="calc(100dvh - 2 * var(--catalog-modal-y-offset) - 8rem)"
             leftActions={selectionSummary}
             actions={
                 <Button
@@ -310,7 +314,9 @@ const WidgetCatalogModal: FC<Props> = ({
                 <Group justify="space-between" gap="sm" wrap="nowrap">
                     <TextInput
                         size="sm"
-                        w={360}
+                        flex={1}
+                        miw={0}
+                        maw={360}
                         aria-label="Search widgets"
                         placeholder="Search widgets..."
                         leftSection={<MantineIcon icon={IconSearch} />}
@@ -320,7 +326,8 @@ const WidgetCatalogModal: FC<Props> = ({
                         }
                         data-autofocus
                     />
-                    <Group gap="sm">
+                    {/* A narrow modal shrinks the search, never wraps these */}
+                    <Group gap="sm" wrap="nowrap">
                         <Popover
                             opened={isSpacePickerOpen}
                             onChange={setIsSpacePickerOpen}

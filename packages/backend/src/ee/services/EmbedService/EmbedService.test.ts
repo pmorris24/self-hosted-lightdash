@@ -2,7 +2,9 @@ import { Ability, AbilityBuilder } from '@casl/ability';
 import {
     applyEmbedScopeAbilities,
     buildAbilityFromScopes,
+    FilterInteractivityValues,
     ForbiddenError,
+    NotFoundError,
     type AnonymousAccount,
     type CreateEmbedJwt,
     type EmbedContent,
@@ -10,7 +12,10 @@ import {
     type PossibleAbilities,
     type SessionUser,
 } from '@lightdash/common';
+import { decodeLightdashJwt } from '../../../auth/lightdashJwt';
+import { lightdashConfig } from '../../../config/lightdashConfig';
 import { validExplore } from '../../../services/ProjectService/ProjectService.mock';
+import { EncryptionUtil } from '../../../utils/EncryptionUtil/EncryptionUtil';
 import { EmbedService } from './EmbedService';
 import {
     EmbedServiceArgumentsMock,
@@ -1519,5 +1524,247 @@ describe('EmbedService', () => {
                 );
             },
         );
+    });
+});
+
+describe('EmbedService project tokens', () => {
+    const encryptionUtil = new EncryptionUtil({ lightdashConfig });
+    const encodedSecret = encryptionUtil.encrypt('project-token-secret');
+    const embedSettings = {
+        projectUuid: mockProjectUuid,
+        encodedSecret,
+        organization: { organizationUuid: mockOrganizationUuid },
+        allowAllDashboards: false,
+        dashboardUuids: ['dashboard-a'],
+        allowAllCharts: false,
+        chartUuids: ['chart-b'],
+        allowAllApps: false,
+        appUuids: [],
+    };
+    const charts: Record<
+        string,
+        { uuid: string; projectUuid: string; tableName: string }
+    > = {
+        'chart-a': {
+            uuid: 'chart-a',
+            projectUuid: mockProjectUuid,
+            tableName: 'orders',
+        },
+        'chart-b': {
+            uuid: 'chart-b',
+            projectUuid: mockProjectUuid,
+            tableName: 'payments',
+        },
+        'chart-other': {
+            uuid: 'chart-other',
+            projectUuid: 'other-project',
+            tableName: 'events',
+        },
+    };
+    const dashboards: Record<string, { uuid: string; tiles: unknown[] }> = {
+        'dashboard-a': {
+            uuid: 'dashboard-a',
+            tiles: [
+                {
+                    type: 'saved_chart',
+                    properties: { savedChartUuid: 'chart-a' },
+                },
+                {
+                    type: 'markdown',
+                    properties: { title: 'Note', content: '' },
+                },
+            ],
+        },
+    };
+    const buildService = (settings = embedSettings) =>
+        new EmbedService({
+            ...EmbedServiceArgumentsMock,
+            embedModel: { get: vi.fn().mockResolvedValue(settings) },
+            dashboardModel: {
+                getByIdOrSlug: vi.fn(async (uuid: string) => {
+                    const dashboard = dashboards[uuid];
+                    if (!dashboard)
+                        throw new NotFoundError(`Dashboard ${uuid} not found`);
+                    return dashboard;
+                }),
+            },
+            savedChartModel: {
+                get: vi.fn(async (uuid: string) => {
+                    const chart = charts[uuid];
+                    if (!chart)
+                        throw new NotFoundError(`Chart ${uuid} not found`);
+                    return chart;
+                }),
+            },
+        } as unknown as ConstructorParameters<typeof EmbedService>[0]);
+    const projectToken = (
+        exp = Math.floor(Date.now() / 1000) + 1800,
+    ): CreateEmbedJwt => ({
+        content: {
+            type: 'project',
+            projectUuid: mockProjectUuid,
+            canExportCsv: true,
+            canDateZoom: true,
+            dashboardFiltersInteractivity: {
+                enabled: FilterInteractivityValues.all,
+            },
+        },
+        userAttributes: { region: 'emea' },
+        user: { externalId: 'viewer-1', email: 'viewer@example.com' },
+        exp,
+    });
+    const accountFor = (data: CreateEmbedJwt) =>
+        ({
+            authentication: { type: 'jwt', source: 'token', data },
+            access: {
+                content: {
+                    type: data.content.type,
+                    chartUuids: [],
+                    explores: [],
+                },
+            },
+        }) as unknown as AnonymousAccount;
+
+    test('resolves the explores of the allowed charts and dashboards', async () => {
+        const content = await buildService().getContentUuidFromJwt(
+            projectToken(),
+            mockProjectUuid,
+        );
+        expect(content).toEqual({
+            dashboardUuid: undefined,
+            chartUuids: [],
+            type: 'project',
+            explores: ['payments', 'orders'],
+        });
+    });
+
+    test('leaves the explores open when the settings allow everything', async () => {
+        const content = await buildService({
+            ...embedSettings,
+            allowAllCharts: true,
+        }).getContentUuidFromJwt(projectToken(), mockProjectUuid);
+        expect(content.explores).toEqual([]);
+    });
+
+    test('mints a dashboard token with the same viewer, rights and expiry', async () => {
+        const exp = Math.floor(Date.now() / 1000) + 1800;
+        const { token, expiresAt } = await buildService().getContentToken(
+            accountFor(projectToken(exp)),
+            mockProjectUuid,
+            { type: 'dashboard', dashboardUuid: 'dashboard-a' },
+        );
+        const decoded = decodeLightdashJwt(token, encodedSecret);
+        expect(decoded.content).toMatchObject({
+            type: 'dashboard',
+            projectUuid: mockProjectUuid,
+            dashboardUuid: 'dashboard-a',
+            canExportCsv: true,
+            canDateZoom: true,
+            dashboardFiltersInteractivity: {
+                enabled: FilterInteractivityValues.all,
+            },
+        });
+        expect(decoded.userAttributes).toEqual({ region: 'emea' });
+        expect(decoded.user).toEqual({
+            externalId: 'viewer-1',
+            email: 'viewer@example.com',
+        });
+        expect(decoded.exp).toBe(exp);
+        expect(expiresAt).toBe(new Date(exp * 1000).toISOString());
+    });
+
+    test('narrows the exchanged token to the rights the request keeps', async () => {
+        const { token } = await buildService().getContentToken(
+            accountFor(projectToken()),
+            mockProjectUuid,
+            {
+                type: 'dashboard',
+                dashboardUuid: 'dashboard-a',
+                rights: {
+                    canExportCsv: false,
+                    canExportPagePdf: true,
+                    dashboardFiltersInteractivity: { enabled: false },
+                },
+            },
+        );
+        const decoded = decodeLightdashJwt(token, encodedSecret);
+        expect(decoded.content).toMatchObject({
+            type: 'dashboard',
+            canExportCsv: false,
+            canDateZoom: true,
+            dashboardFiltersInteractivity: { enabled: false },
+        });
+        // The project token never granted PDF export, so the request cannot add it.
+        expect(decoded.content).toHaveProperty('canExportPagePdf', false);
+    });
+
+    test('mints a chart token that carries only the chart rights', async () => {
+        const { token } = await buildService().getContentToken(
+            accountFor(projectToken()),
+            mockProjectUuid,
+            { type: 'chart', savedChartUuid: 'chart-b' },
+        );
+        const decoded = decodeLightdashJwt(token, encodedSecret);
+        expect(decoded.content).toEqual({
+            type: 'chart',
+            projectUuid: mockProjectUuid,
+            contentId: 'chart-b',
+            isPreview: undefined,
+            canExportCsv: true,
+            canExportImages: undefined,
+            canViewUnderlyingData: undefined,
+        });
+    });
+
+    test('refuses content the embed settings do not allow', async () => {
+        const service = buildService();
+        await expect(
+            service.getContentToken(
+                accountFor(projectToken()),
+                mockProjectUuid,
+                {
+                    type: 'dashboard',
+                    dashboardUuid: 'dashboard-z',
+                },
+            ),
+        ).rejects.toThrow(ForbiddenError);
+        await expect(
+            service.getContentToken(
+                accountFor(projectToken()),
+                mockProjectUuid,
+                {
+                    type: 'chart',
+                    savedChartUuid: 'chart-a',
+                },
+            ),
+        ).rejects.toThrow(ForbiddenError);
+    });
+
+    test('refuses a chart of another project even when everything is allowed', async () => {
+        await expect(
+            buildService({
+                ...embedSettings,
+                allowAllCharts: true,
+            }).getContentToken(accountFor(projectToken()), mockProjectUuid, {
+                type: 'chart',
+                savedChartUuid: 'chart-other',
+            }),
+        ).rejects.toThrow(NotFoundError);
+    });
+
+    test('only a project token can be exchanged', async () => {
+        await expect(
+            buildService().getContentToken(
+                accountFor({
+                    content: {
+                        type: 'dashboard',
+                        dashboardUuid: 'dashboard-a',
+                    },
+                    exp: Math.floor(Date.now() / 1000) + 60,
+                }),
+                mockProjectUuid,
+                { type: 'dashboard', dashboardUuid: 'dashboard-a' },
+            ),
+        ).rejects.toThrow(ForbiddenError);
     });
 });

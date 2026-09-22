@@ -1,3 +1,7 @@
+import {
+    type EmbedDashboard,
+    type FieldValueSearchResult,
+} from '@lightdash/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     createLightdashApiClient,
@@ -5,8 +9,19 @@ import {
     type LightdashApiClientConfig,
     type LightdashContentResults,
     type ListAiAgentThreadsOptions,
+    type LightdashExploreField,
+    type LightdashChartModel,
+    type LightdashFetchOptions,
+    type LightdashQueryRows,
     type ListContentOptions,
+    type RunMetricQueryOptions,
+    type SearchFieldValuesOptions,
 } from './api';
+import { pivotRows, type PivotedData } from './data/pivot';
+import {
+    toMetricQueryParams,
+    type ChartModelQueryParams,
+} from './model/chartModelTranslator';
 
 type UseLightdashApiState<T> = {
     data: T | null;
@@ -40,7 +55,7 @@ const toError = (error: unknown) => {
     return new Error('Lightdash request failed');
 };
 
-const useLightdashApiQuery = <T,>(
+export const useLightdashApiQuery = <T,>(
     key: string,
     enabled: boolean,
     load: (signal: AbortSignal) => Promise<T>,
@@ -127,6 +142,320 @@ export const useLightdashContent = (
         key,
         enabled,
         useCallback(() => client.listContent(args), [args, client]),
+    );
+};
+
+/**
+ * Reads the saved dashboard a dashboard token is signed for, so a host page
+ * can place its charts in its own layout. See `dashboardModelToComposed`.
+ */
+export type UseDashboardModelOptions = UseLightdashApiOptions & {
+    // The dashboard to read. Required with a project token; a dashboard
+    // token already names its dashboard.
+    dashboardUuid?: string;
+};
+
+export const useDashboardModel = (
+    config: LightdashApiClientConfig,
+    options: UseDashboardModelOptions = {},
+): UseLightdashApiResult<EmbedDashboard> => {
+    const client = useLightdashApiClient(config);
+    const { dashboardUuid } = options;
+    const key = JSON.stringify([
+        'dashboard-model',
+        config.instanceUrl,
+        config.projectUuid ?? null,
+        config.auth ?? null,
+        dashboardUuid ?? null,
+    ]);
+    const enabled = options.enabled !== false && !!config.projectUuid;
+
+    return useLightdashApiQuery(
+        key,
+        enabled,
+        useCallback(
+            () => client.getDashboard({ dashboardUuid }),
+            [client, dashboardUuid],
+        ),
+    );
+};
+
+/** The visible dimensions and metrics of one explore. */
+export const useExploreFields = (
+    config: LightdashApiClientConfig,
+    args: { exploreName: string; projectUuid?: string },
+    options: UseLightdashApiOptions = {},
+): UseLightdashApiResult<LightdashExploreField[]> => {
+    const client = useLightdashApiClient(config);
+    const key = JSON.stringify([
+        'explore-fields',
+        config.instanceUrl,
+        config.projectUuid ?? null,
+        config.auth ?? null,
+        args,
+    ]);
+    const enabled =
+        options.enabled !== false &&
+        args.exploreName.length > 0 &&
+        !!(args.projectUuid ?? config.projectUuid);
+
+    return useLightdashApiQuery(
+        key,
+        enabled,
+        useCallback(() => client.getExploreFields(args), [args, client]),
+    );
+};
+
+/** The model of one saved chart: its explore, dimensions and metrics. */
+export const useChartModel = (
+    config: LightdashApiClientConfig,
+    args: { chartUuid: string; projectUuid?: string },
+    options: UseLightdashApiOptions = {},
+): UseLightdashApiResult<LightdashChartModel> => {
+    const client = useLightdashApiClient(config);
+    const { chartUuid, projectUuid } = args;
+    const key = JSON.stringify([
+        'chart-model',
+        config.instanceUrl,
+        config.projectUuid ?? null,
+        config.auth ?? null,
+        chartUuid,
+        projectUuid ?? null,
+    ]);
+    const enabled =
+        options.enabled !== false &&
+        chartUuid.length > 0 &&
+        !!(projectUuid ?? config.projectUuid);
+
+    return useLightdashApiQuery(
+        key,
+        enabled,
+        useCallback(
+            () => client.getChart({ chartUuid, projectUuid }),
+            [chartUuid, client, projectUuid],
+        ),
+    );
+};
+
+// Results of `useMetricQuery({ cache: true })`, newest last. The key holds the
+// token, so one viewer never reads the rows of another.
+const QUERY_CACHE_MAX_ENTRIES = 50;
+const queryCache = new Map<string, LightdashQueryRows>();
+
+const rememberQuery = (key: string, result: LightdashQueryRows) => {
+    queryCache.delete(key);
+    queryCache.set(key, result);
+    if (queryCache.size > QUERY_CACHE_MAX_ENTRIES) {
+        const oldest = queryCache.keys().next();
+        if (!oldest.done) queryCache.delete(oldest.value);
+    }
+};
+
+/** Control of the result cache that `useMetricQuery` fills. */
+export const useLightdashQueryCache = () =>
+    useMemo(
+        () => ({
+            clear: () => queryCache.clear(),
+            size: () => queryCache.size,
+        }),
+        [],
+    );
+
+export type UseMetricQueryOptions = UseLightdashApiOptions & {
+    // Keep results in the page, so the same query does not run twice.
+    cache?: boolean;
+};
+
+/** A governed query on one explore, as flat rows for `DataChart`. */
+export const useMetricQuery = (
+    config: LightdashApiClientConfig,
+    args: Omit<RunMetricQueryOptions, 'signal'>,
+    options: UseMetricQueryOptions = {},
+): UseLightdashApiResult<LightdashQueryRows> => {
+    const client = useLightdashApiClient(config);
+    const argsKey = JSON.stringify(args);
+    const key = JSON.stringify([
+        'metric-query',
+        config.instanceUrl,
+        config.projectUuid ?? null,
+        config.auth ?? null,
+        argsKey,
+    ]);
+    const enabled =
+        options.enabled !== false &&
+        args.exploreName.length > 0 &&
+        args.dimensions.length + args.metrics.length > 0 &&
+        !!(args.projectUuid ?? config.projectUuid);
+
+    return useLightdashApiQuery(
+        key,
+        enabled,
+        useCallback(
+            async (signal: AbortSignal) => {
+                const cached = options.cache ? queryCache.get(key) : undefined;
+                if (cached) return cached;
+                const result = await client.runMetricQuery({ ...args, signal });
+                if (options.cache) rememberQuery(key, result);
+                return result;
+            },
+            [argsKey, client, key, options.cache], // eslint-disable-line react-hooks/exhaustive-deps
+        ),
+    );
+};
+
+export type UseChartQueryArgs = {
+    chartUuid: string;
+    projectUuid?: string;
+    // Changes to the saved chart's query, for example a lower `limit`.
+    overrides?: Partial<ChartModelQueryParams>;
+};
+
+export type UseChartQueryResult = {
+    chart: UseLightdashApiResult<LightdashChartModel>;
+    query: UseLightdashApiResult<LightdashQueryRows>;
+    // True while either the model or the rows are loading.
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => void;
+};
+
+/**
+ * The query of a saved chart, by its id: reads the chart model, then runs its
+ * query. `chartModelTranslator` turns the two results into props.
+ */
+export const useChartQuery = (
+    config: LightdashApiClientConfig,
+    args: UseChartQueryArgs,
+    options: UseMetricQueryOptions = {},
+): UseChartQueryResult => {
+    const { chartUuid, projectUuid, overrides } = args;
+    const chart = useChartModel(config, { chartUuid, projectUuid }, options);
+    const overridesKey = JSON.stringify(overrides ?? {});
+    const queryArgs = useMemo(
+        () =>
+            chart.data
+                ? {
+                      ...toMetricQueryParams(
+                          chart.data,
+                          JSON.parse(overridesKey) as Partial<ChartModelQueryParams>,
+                      ),
+                      projectUuid,
+                  }
+                : { exploreName: '', dimensions: [], metrics: [], projectUuid },
+        [chart.data, overridesKey, projectUuid],
+    );
+    const query = useMetricQuery(config, queryArgs, {
+        ...options,
+        enabled: options.enabled !== false && !!chart.data,
+    });
+    const refetch = useCallback(() => {
+        chart.refetch();
+        query.refetch();
+    }, [chart, query]);
+
+    return {
+        chart,
+        query,
+        isLoading: chart.isLoading || query.isLoading,
+        error: chart.error ?? query.error,
+        refetch,
+    };
+};
+
+export type UseMetricQueryPivotArgs = Omit<RunMetricQueryOptions, 'signal'> & {
+    // Dimensions that stay as row headers.
+    rowFields: string[];
+    // The dimension whose values become columns.
+    columnField: string;
+};
+
+export type UseMetricQueryPivotResult = Omit<
+    UseLightdashApiResult<LightdashQueryRows>,
+    'data'
+> & {
+    // Wide rows: one per `rowFields` combination.
+    data: PivotedData | null;
+};
+
+/** A governed query, pivoted in the page: one column per `columnField` value. */
+export const useMetricQueryPivot = (
+    config: LightdashApiClientConfig,
+    args: UseMetricQueryPivotArgs,
+    options: UseMetricQueryOptions = {},
+): UseMetricQueryPivotResult => {
+    const { rowFields, columnField, ...queryArgs } = args;
+    const query = useMetricQuery(config, queryArgs, options);
+    const rowFieldsKey = rowFields.join('\u0000');
+    const metricsKey = queryArgs.metrics.join('\u0000');
+    const data = useMemo(
+        () =>
+            query.data
+                ? pivotRows({
+                      rows: query.data.rows,
+                      columns: query.data.columns,
+                      groupBy: rowFieldsKey.split('\u0000'),
+                      breakBy: columnField,
+                      values: metricsKey.split('\u0000'),
+                  })
+                : null,
+        [query.data, rowFieldsKey, columnField, metricsKey],
+    );
+    return { ...query, data };
+};
+
+/**
+ * Any Lightdash API path, with the embed token of the page. For an endpoint
+ * the SDK has no hook for yet. The token decides what the call may read.
+ */
+export const useLightdashFetch = <T,>(
+    config: LightdashApiClientConfig,
+    path: string,
+    fetchOptions: LightdashFetchOptions = {},
+    options: UseLightdashApiOptions = {},
+): UseLightdashApiResult<T> => {
+    const client = useLightdashApiClient(config);
+    const key = JSON.stringify([
+        'fetch',
+        config.instanceUrl,
+        config.auth ?? null,
+        path,
+        fetchOptions,
+    ]);
+    const enabled = options.enabled !== false && path.length > 0;
+
+    return useLightdashApiQuery(
+        key,
+        enabled,
+        useCallback(
+            (signal: AbortSignal) =>
+                client.request<T>({ path, signal, ...fetchOptions }),
+            [client, path, fetchOptions],
+        ),
+    );
+};
+
+/** Values of one field, for a filter control a host page builds itself. */
+export const useFieldValues = (
+    config: LightdashApiClientConfig,
+    args: SearchFieldValuesOptions,
+    options: UseLightdashApiOptions = {},
+): UseLightdashApiResult<FieldValueSearchResult> => {
+    const client = useLightdashApiClient(config);
+    const key = JSON.stringify([
+        'field-values',
+        config.instanceUrl,
+        config.projectUuid ?? null,
+        config.auth ?? null,
+        args,
+    ]);
+    const enabled =
+        options.enabled !== false &&
+        !!(args.projectUuid ?? config.projectUuid);
+
+    return useLightdashApiQuery(
+        key,
+        enabled,
+        useCallback(() => client.searchFieldValues(args), [args, client]),
     );
 };
 

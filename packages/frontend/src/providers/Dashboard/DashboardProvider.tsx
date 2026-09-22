@@ -1,40 +1,41 @@
 import {
+    type AdditionalMetric,
     applyDimensionOverrides,
     applyMetricOverrides,
+    type ChartZoomableField,
     compressDashboardFiltersToParam,
     convertDashboardFiltersParamToDashboardFilters,
-    DashboardTileTypes,
-    DateGranularity,
-    EMPTY_DATE_ZOOM_CONFIG,
-    FilterInteractivityValues,
-    getFilterInteractivityValue,
-    getItemId,
-    getMissingRequiredParameters,
-    getUnmetFilterRequirements,
-    isDashboardChartTileType,
-    isFilterLockedOnTab,
-    isStandardDateGranularity,
-    isSubDayGranularity,
-    normalizeDateZoomConfig,
-    normalizeGranularityParam,
-    stripOverridesForLockedFiltersOnTab,
-    type AdditionalMetric,
-    type ChartZoomableField,
     type Dashboard,
     type DashboardFilterableField,
     type DashboardFilterRule,
     type DashboardFilters,
     type DashboardParameters,
+    DashboardTileTypes,
+    DateGranularity,
     type DateZoomConfig,
+    EMPTY_DATE_ZOOM_CONFIG,
     type FilterableDimension,
+    FilterInteractivityValues,
+    getFilterInteractivityValue,
+    getItemId,
+    getMissingRequiredParameters,
+    getUnmetFilterRequirements,
     type InteractivityOptions,
+    isDashboardChartTileType,
+    isFilterInteractivityEnabled,
+    isFilterLockedOnTab,
+    isStandardDateGranularity,
+    isSubDayGranularity,
     type LanguageMap,
     type Metric,
+    normalizeDateZoomConfig,
+    normalizeGranularityParam,
     type ParameterDefinitions,
     type ParametersValuesMap,
     type ParameterValue,
     type SavedChartsInfoForDashboardAvailableFilters,
     type SortField,
+    stripOverridesForLockedFiltersOnTab,
 } from '@lightdash/common';
 import clone from 'lodash/clone';
 import isEqual from 'lodash/isEqual';
@@ -1020,7 +1021,7 @@ const DashboardProviderInner: React.FC<DashboardProviderProps> = ({
 
         if (!currentDashboard) return;
 
-        const sdkFilters = embed.mode === 'sdk' ? embed.filters : undefined;
+        const sdkFilters = embed.hasHostFilters ? embed.filters : undefined;
         const sdkFilterValuesChanged = haveSdkFiltersChanged(
             appliedSdkFiltersRef.current?.filters,
             sdkFilters,
@@ -1032,7 +1033,7 @@ const DashboardProviderInner: React.FC<DashboardProviderProps> = ({
                 appliedSdkFiltersRef.current.activeTabUuid !==
                     (activeTab?.uuid ?? null));
         const sdkFiltersChanged =
-            embed.mode === 'sdk' &&
+            embed.hasHostFilters &&
             (sdkFilterValuesChanged || sdkFilterContextChanged);
 
         if (dashboardFilters === emptyFilters || sdkFiltersChanged) {
@@ -1148,7 +1149,7 @@ const DashboardProviderInner: React.FC<DashboardProviderProps> = ({
                     );
             }
 
-            if (embed.mode === 'sdk') {
+            if (embed.hasHostFilters) {
                 appliedSdkFiltersRef.current = {
                     dashboardUuid: currentDashboard.uuid,
                     activeTabUuid: activeTab?.uuid ?? null,
@@ -1540,14 +1541,30 @@ const DashboardProviderInner: React.FC<DashboardProviderProps> = ({
                 allFilters.metrics.length +
                 allFilters.tableCalculations.length;
 
+            const canReportValues =
+                !!embedDashboard?.dashboardFiltersInteractivity &&
+                isFilterInteractivityEnabled(
+                    embedDashboard.dashboardFiltersInteractivity,
+                );
             dispatchEmbedEvent(LightdashEventType.FilterChanged, {
                 hasFilters: filterCount > 0,
                 filterCount,
+                ...(canReportValues
+                    ? {
+                          filters: allFilters.dimensions
+                              .filter((rule) => !rule.disabled)
+                              .map((rule) => ({
+                                  fieldId: rule.target.fieldId,
+                                  operator: rule.operator,
+                                  values: rule.values ?? [],
+                              })),
+                      }
+                    : {}),
             });
         }
 
         previousFiltersRef.current = allFilters;
-    }, [allFilters, dispatchEmbedEvent]);
+    }, [allFilters, dispatchEmbedEvent, embedDashboard]);
 
     // Resets all dashboard filters. There's a bit of a race condition
     // here because we store filters in memory in two places:

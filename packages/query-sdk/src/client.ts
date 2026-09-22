@@ -10,8 +10,10 @@ import {
     createApiTransport,
     createEmbedExternalFetch,
     createEmbedFetchAdapter,
+    type FetchAdapter,
 } from './apiTransport';
 import { applyColorSchemeSeed, mountColorScheme } from './colorScheme';
+import { createChartTokenExchange, isProjectToken } from './embedContentToken';
 import { markEmbedded } from './embedMode';
 import { mountInspector } from './inspector';
 import { mountLineage } from './lineage';
@@ -153,14 +155,9 @@ export function createEmbedClient(
     options: EmbedClientOptions,
 ): LightdashClient {
     // Guards untyped callers, e.g. a host page calling a packaged app's mount().
-    if (
-        !options.embedToken ||
-        !options.baseUrl ||
-        !options.projectUuid ||
-        !options.appUuid
-    ) {
+    if (!options.embedToken || !options.baseUrl || !options.projectUuid) {
         throw new Error(
-            'createEmbedClient requires embedToken, baseUrl, projectUuid and appUuid.',
+            'createEmbedClient requires embedToken, baseUrl and projectUuid.',
         );
     }
     markEmbedded();
@@ -172,7 +169,26 @@ export function createEmbedClient(
     };
     const fetchAdapter = createEmbedFetchAdapter(options);
     return new LightdashClient(config, {
-        ...createApiTransport(config, fetchAdapter),
+        ...createApiTransport(config, fetchAdapter, {
+            savedChartAdapter: createSavedChartAdapter(options),
+        }),
         externalFetch: createEmbedExternalFetch(options, fetchAdapter),
     });
+}
+
+/**
+ * A project token runs `model()` queries as is, but a saved chart needs the
+ * token of that chart: exchange once per chart and run it with the result.
+ * A dashboard or chart token needs nothing extra.
+ */
+function createSavedChartAdapter(
+    options: EmbedClientOptions,
+): ((chartUuid: string) => Promise<FetchAdapter>) | undefined {
+    if (!isProjectToken(options.embedToken)) return undefined;
+    const chartToken = createChartTokenExchange(options);
+    return async (chartUuid) =>
+        createEmbedFetchAdapter({
+            ...options,
+            embedToken: await chartToken(chartUuid),
+        });
 }

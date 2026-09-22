@@ -113,6 +113,10 @@ export class PermissionsService extends BaseService {
                 throw new ForbiddenError(
                     'API access embeds cannot access charts',
                 );
+            case 'project':
+                throw new ForbiddenError(
+                    'Exchange the project token for a chart token to access charts',
+                );
             default:
                 return assertUnreachable(
                     content.type,

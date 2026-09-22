@@ -41,8 +41,10 @@ import useDashboardContext from '../../../../../providers/Dashboard/useDashboard
 import useDashboardTileStatusContext from '../../../../../providers/Dashboard/useDashboardTileStatusContext';
 import { type EmbedExploreOptions } from '../../../../providers/Embed/types';
 import useEmbed from '../../../../providers/Embed/useEmbed';
+import { useEmbedContentHeight } from '../../hooks/useEmbedContentHeight';
 import { useEmbedDashboardTabChange } from '../../hooks/useEmbedDashboardTabChange';
 import { embedContractClass } from '../../styles/embedClassContract';
+import fitContentStyles from '../../styles/fitContent.module.css';
 import {
     applyFilterLabelOverrides,
     restoreFilterLabelOverrides,
@@ -311,6 +313,7 @@ const EmbedDashboard: FC<{
     onEditModeChange,
 }) => {
     const projectUuid = useDashboardContext((c) => c.projectUuid);
+    const fitContent = useEmbedContentHeight();
     const activeTab = useDashboardContext((c) => c.activeTab);
     const setActiveTab = useDashboardContext((c) => c.setActiveTab);
     const dashboardTiles = useDashboardContext((c) => c.dashboardTiles);
@@ -920,6 +923,10 @@ const EmbedDashboard: FC<{
         <div
             // Used by EmbedDashboardExportPdf to temporarily set height:auto for multipage PDF printing
             id="embed-scroll-container"
+            ref={fitContent.ref}
+            className={
+                fitContent.enabled ? fitContentStyles.dashboard : undefined
+            }
             style={
                 containerStyles ?? {
                     height: '100vh',

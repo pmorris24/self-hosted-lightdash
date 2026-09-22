@@ -7,6 +7,7 @@ import {
     type UiStringKey,
     type UUID,
 } from '@lightdash/common';
+import { type SdkChartSelection } from '../../features/embed/EmbedChart/types';
 import { type SdkFilter } from '../../features/embed/EmbedDashboard/types';
 import { type ChartSavedAction } from '../../features/embed/events/types';
 
@@ -33,6 +34,8 @@ export interface EmbedContext {
     embedToken?: string;
     // Dashboard filters available to the JWT user
     filters?: SdkFilter[];
+    // The host owns `filters`: an SDK prop, or a command to a framed embed.
+    hasHostFilters: boolean;
     // The project UUID of the project the JWT user is embedded in
     projectUuid?: string;
     // The content claim decoded from the JWT
@@ -47,6 +50,8 @@ export interface EmbedContext {
     languageMap?: LanguageMap;
     // The function to call when the user clicks "Explore from here"
     onExplore?: (options: EmbedExploreOptions) => void;
+    // A viewer clicked a data point of an embedded chart.
+    onSelect?: (selection: SdkChartSelection) => void;
     // Returns the SDK uiOverrides value for a UI-string key, if any
     t: (input: UiStringKey) => string | undefined;
     // The function to call when the user clicks "Back to dashboard" from an Explore

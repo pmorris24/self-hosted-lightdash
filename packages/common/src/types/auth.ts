@@ -108,7 +108,8 @@ export type EmbedContent = {
         | 'dataApp'
         | 'aiAgent'
         | 'metricsCatalog'
-        | 'apiAccess';
+        | 'apiAccess'
+        | 'project';
 };
 
 export type EmbedAccess = {

@@ -1448,6 +1448,7 @@ const getBackendCodeSnippet = (
                 );
             break;
         case 'apiAccess':
+        case 'project':
             break;
         default:
             assertUnreachable(
@@ -1580,6 +1581,7 @@ export const EmbeddedAiAgent = ({ embedJwt }: EmbeddedAiAgentProps) => {
         case 'metricsCatalog':
         case 'dataApp':
         case 'apiAccess':
+        case 'project':
             return '';
         default:
             return assertUnreachable(

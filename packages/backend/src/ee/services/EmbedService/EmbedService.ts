@@ -23,6 +23,8 @@ import {
     DecodedEmbed,
     Embed,
     EmbedContent,
+    EmbedContentToken,
+    EmbedContentTokenRequest,
     EmbedDashboard,
     EmbedUrl,
     ExecuteAsyncDashboardChartRequestParams,
@@ -55,7 +57,9 @@ import {
     isFilterInteractivityEnabled,
     isFilterLockedOnTab,
     isParameterInteractivityEnabled,
+    isProjectContent,
     MetricQuery,
+    narrowInteractivityOptions,
     NotFoundError,
     NotSupportedError,
     ParameterError,
@@ -492,6 +496,166 @@ export class EmbedService extends BaseService {
     }
 
     /**
+     * The explores a project token may query: those of every chart the embed
+     * settings allow, directly or through an allowed dashboard. Empty when the
+     * settings allow everything, since the ability is then unconstrained.
+     */
+    private async getProjectTokenExplores(
+        projectUuid: string,
+    ): Promise<string[]> {
+        const embed = await this.embedModel.get(projectUuid);
+        if (embed.allowAllCharts || embed.allowAllDashboards) {
+            return [];
+        }
+        const dashboards = await Promise.all(
+            embed.dashboardUuids.map((dashboardUuid) =>
+                this.dashboardModel
+                    .getByIdOrSlug(dashboardUuid, { projectUuid })
+                    .catch((error: unknown) => {
+                        if (error instanceof NotFoundError) return undefined;
+                        throw error;
+                    }),
+            ),
+        );
+        const dashboardChartUuids = dashboards.flatMap((dashboard) =>
+            dashboard
+                ? dashboard.tiles.flatMap((tile) =>
+                      isDashboardChartTileType(tile) &&
+                      tile.properties.savedChartUuid
+                          ? [tile.properties.savedChartUuid]
+                          : [],
+                  )
+                : [],
+        );
+        const chartUuids = [
+            ...new Set([...embed.chartUuids, ...dashboardChartUuids]),
+        ];
+        const charts = await Promise.all(
+            chartUuids.map((chartUuid) =>
+                this.savedChartModel.get(chartUuid).catch((error: unknown) => {
+                    if (error instanceof NotFoundError) return undefined;
+                    throw error;
+                }),
+            ),
+        );
+        return [
+            ...new Set(
+                charts.flatMap((chart) =>
+                    chart && chart.projectUuid === projectUuid
+                        ? [chart.tableName]
+                        : [],
+                ),
+            ),
+        ];
+    }
+
+    /**
+     * Exchanges a project token for a dashboard or chart token of the same
+     * viewer: same user, attributes, rights and expiry. The content must be
+     * one the project's embed settings allow.
+     */
+    async getContentToken(
+        account: AnonymousAccount,
+        projectUuid: string,
+        request: EmbedContentTokenRequest,
+    ): Promise<EmbedContentToken> {
+        const decodedToken = account.authentication.data;
+        if (!isProjectContent(decodedToken.content)) {
+            throw new ForbiddenError(
+                'Only a project token can be exchanged for a content token',
+            );
+        }
+        const embed = await this.embedModel.get(projectUuid);
+        const { isPreview } = decodedToken.content;
+        // What the project token grants, less what the request leaves out.
+        const rights = narrowInteractivityOptions(
+            decodedToken.content,
+            request.rights,
+        );
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const expiresAtSeconds = decodedToken.exp ?? nowSeconds + 3600;
+        const expiresInSeconds = expiresAtSeconds - nowSeconds;
+        if (expiresInSeconds <= 0) {
+            throw new ForbiddenError('The project token has expired');
+        }
+
+        let content: CreateEmbedJwt['content'];
+        if (request.type === 'dashboard') {
+            if (
+                !embed.allowAllDashboards &&
+                !embed.dashboardUuids.includes(request.dashboardUuid)
+            ) {
+                throw new ForbiddenError(
+                    `Dashboard ${request.dashboardUuid} is not embedded`,
+                );
+            }
+            const dashboard = await this.dashboardModel.getByIdOrSlug(
+                request.dashboardUuid,
+                { projectUuid },
+            );
+            content = {
+                type: 'dashboard',
+                projectUuid,
+                dashboardUuid: dashboard.uuid,
+                isPreview,
+                dashboardFiltersInteractivity:
+                    rights.dashboardFiltersInteractivity,
+                parameterInteractivity: rights.parameterInteractivity,
+                canExportCsv: rights.canExportCsv,
+                canExportDashboardCsv: rights.canExportDashboardCsv,
+                canExportImages: rights.canExportImages,
+                canDateZoom: rights.canDateZoom,
+                canExportPagePdf: rights.canExportPagePdf,
+                canExplore: rights.canExplore,
+                canViewUnderlyingData: rights.canViewUnderlyingData,
+                canViewDataApps: rights.canViewDataApps,
+                stickyHeader: rights.stickyHeader,
+            };
+        } else {
+            if (
+                !embed.allowAllCharts &&
+                !embed.chartUuids.includes(request.savedChartUuid)
+            ) {
+                throw new ForbiddenError(
+                    `Chart ${request.savedChartUuid} is not embedded`,
+                );
+            }
+            const chart = await this.savedChartModel.get(
+                request.savedChartUuid,
+            );
+            if (chart.projectUuid !== projectUuid) {
+                throw new NotFoundError(
+                    `Chart ${request.savedChartUuid} not found in project ${projectUuid}`,
+                );
+            }
+            content = {
+                type: 'chart',
+                projectUuid,
+                contentId: chart.uuid,
+                isPreview,
+                canExportCsv: rights.canExportCsv,
+                canExportImages: rights.canExportImages,
+                canViewUnderlyingData: rights.canViewUnderlyingData,
+            };
+        }
+
+        const token = encodeLightdashJwt(
+            {
+                content,
+                userAttributes: decodedToken.userAttributes,
+                user: decodedToken.user,
+                writeActions: decodedToken.writeActions,
+            },
+            embed.encodedSecret,
+            `${expiresInSeconds}s`,
+        );
+        return {
+            token,
+            expiresAt: new Date(expiresAtSeconds * 1000).toISOString(),
+        };
+    }
+
+    /**
      * Extract content (dashboard, chart, or data app) from the JWT based on
      * its content type.
      */
@@ -561,6 +725,15 @@ export class EmbedService extends BaseService {
                 chartUuids: [],
                 type: 'apiAccess',
                 explores: [],
+            };
+        }
+
+        if (decodedToken.content.type === 'project') {
+            return {
+                dashboardUuid: undefined,
+                chartUuids: [],
+                type: 'project',
+                explores: await this.getProjectTokenExplores(projectUuid),
             };
         }
 
@@ -1765,6 +1938,10 @@ export class EmbedService extends BaseService {
             case 'apiAccess':
                 throw new ForbiddenError(
                     'API access embeds cannot access saved charts',
+                );
+            case 'project':
+                throw new ForbiddenError(
+                    'Exchange the project token for a chart token to access saved charts',
                 );
             case 'dashboard':
                 break;

@@ -5914,9 +5914,14 @@ export class AsyncQueryService extends ProjectService {
         let access;
         let inheritsFromOrgOrProject;
         if (isJwtUser(account)) {
-            if (!ProjectService.isChartEmbed(account)) {
+            if (
+                !ProjectService.isChartEmbed(account) &&
+                !ProjectService.isDashboardEmbed(account)
+            ) {
                 throw new ForbiddenError();
             }
+            // Chart tokens: the chart must be embedded. Dashboard tokens: the
+            // chart must be on that embedded dashboard.
             await this.permissionsService.checkEmbedPermissions(
                 account,
                 savedChart.uuid,

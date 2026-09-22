@@ -1,0 +1,156 @@
+/* Product-section headers and connected interaction rails use Patrick's dashed grid. */
+.product-app .section-heading {
+  align-items: flex-end;
+  gap: 32px;
+  padding-top: 32px;
+  border-top: 1px dashed var(--ui-border);
+  margin-bottom: 24px;
+}
+.product-app .section-heading .section-intro { min-width: 0; }
+.product-app .section-heading .section-kicker {
+  font: 500 12px/1.5 Inter, sans-serif;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: var(--ui-purple);
+}
+.product-app .section-heading h2 {
+  font: 500 clamp(26px, 2.4vw, 36px)/1.15 'Britti Sans', Inter, sans-serif;
+  letter-spacing: -.7px;
+  margin: 8px 0 12px;
+  max-width: 880px;
+  text-wrap: balance;
+}
+.product-app .section-heading .section-intro > p:last-child {
+  font: 14px/1.65 Inter, sans-serif;
+  max-width: 800px;
+  color: var(--ui-muted);
+}
+.product-app .section-detail {
+  font: 500 12px/1.5 Inter, sans-serif;
+  color: var(--ui-muted);
+  margin-bottom: 4px;
+}
+.product-app .section-detail > span { margin-left: 8px; color: var(--ui-purple); }
+.product-app .proposal-proof {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 24px;
+  padding: 0;
+  border: 0;
+  border-top: 1px dashed var(--ui-border);
+  margin: 0 0 24px;
+  color: var(--ui-text);
+}
+.product-app .proposal-proof > div { max-width: none; min-width: 0; }
+.product-app .proof-rail {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px dashed var(--ui-border);
+}
+.product-app .proof-node {
+  position: relative;
+  padding: 16px 24px;
+  min-width: 0;
+}
+.product-app .proof-node:first-child { padding-left: 0; }
+.product-app .proof-node + .proof-node { border-left: 1px dashed var(--ui-border); }
+.product-app .proof-node + .proof-node::before {
+  content: '→';
+  position: absolute;
+  left: -9px;
+  top: 28px;
+  width: 17px;
+  background: var(--ui-bg);
+  color: var(--ui-purple);
+  font: 16px/1 Inter, sans-serif;
+  text-align: center;
+}
+.product-app .proof-node .proof-label {
+  display: block;
+  color: var(--ui-muted);
+  font: 400 12px/1.5 Inter, sans-serif;
+}
+.product-app .proof-node strong {
+  display: block;
+  margin-top: 4px;
+  font: 500 18px/1.35 'Britti Sans', Inter, sans-serif;
+  letter-spacing: -.15px;
+}
+.product-app .proof-node.proof-state strong { color: var(--ui-purple); }
+.product-app .proof-context { padding: 12px 0 0; }
+.product-app .proof-context p {
+  font: 14px/1.65 Inter, sans-serif;
+  color: var(--ui-muted);
+  margin: 0;
+}
+.product-app .proof-signal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 12px/1.5 Inter, sans-serif;
+  color: var(--ui-muted);
+  margin-top: 8px;
+}
+.product-app .proof-signal i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 6px;
+  background: var(--ui-muted);
+  opacity: .7;
+}
+.product-app .has-context .proof-signal { color: var(--ui-good); }
+.product-app .has-context .proof-signal i { background: var(--ui-good); opacity: 1; }
+.product-app .proposal-proof > details {
+  min-width: 0;
+  max-width: 100%;
+  padding-top: 12px;
+  align-self: start;
+}
+.product-app .proposal-proof > details[open] { grid-column: 1 / -1; width: 100%; }
+.product-app .proposal-proof summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  width: fit-content;
+  font: 500 12px/1.5 Inter, sans-serif;
+  color: var(--ui-purple);
+  list-style: none;
+  cursor: pointer;
+  min-height: 24px;
+  border-bottom: 1px solid transparent;
+}
+.product-app .proposal-proof summary::-webkit-details-marker { display: none; }
+.product-app .proposal-proof summary:hover { border-bottom-color: currentColor; }
+.product-app .proposal-proof summary:focus-visible { outline: 2px solid var(--ui-purple); outline-offset: 4px; }
+.product-app .proposal-proof summary > span { font: 18px/1 Inter, sans-serif; transition: transform .16s ease; }
+.product-app .proposal-proof details[open] summary > span { transform: rotate(45deg); }
+.product-app .proposal-proof pre {
+  margin: 12px 0 0;
+  padding: 20px 24px;
+  border: 1px dashed var(--ui-border);
+  border-radius: 0;
+  background: var(--ui-subtle);
+  font: 12px/1.8 ui-monospace, SFMono-Regular, monospace;
+  overflow-x: auto;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .product-app .proposal-proof { grid-template-columns: minmax(0, 1fr); }
+  .product-app .proposal-proof > details { width: auto; padding-top: 8px; }
+  .product-app .section-heading { gap: 16px; }
+}
+@media (max-width: 650px) {
+  .product-app .section-heading { padding-top: 24px; }
+  .product-app .section-heading h2 { font-size: 28px; }
+  .product-app .proof-node { padding: 12px 12px; }
+  .product-app .proof-node strong { font-size: 16px; }
+  .product-app .proof-node + .proof-node::before { top: 28px; }
+  .product-app .proof-node .proof-label { max-width: 100px; }
+  .product-app .proposal-proof pre { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-app .proposal-proof summary > span { transition: none; }
+}

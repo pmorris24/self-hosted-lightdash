@@ -1,6 +1,6 @@
 import { ModalsProvider } from '@mantine/modals';
 import { wrapCreateBrowserRouterV7 } from '@sentry/react';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type FC, type PropsWithChildren } from 'react';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
 import { DocumentTitle } from './components/common/DocumentTitle';
 import VersionAutoUpdater from './components/VersionAutoUpdater/VersionAutoUpdater';
@@ -9,6 +9,7 @@ import {
     CommercialWebAppRoutes,
 } from './ee/CommercialRoutes';
 import { AiAgentsGlobalProvider } from './ee/features/aiCopilot/components/Launcher/AiAgentsGlobalProvider';
+import { useEmbedFrameState } from './ee/features/embed/hooks/useEmbedFrameChannel';
 import { parseEmbedThemeParams } from './ee/providers/Embed/parseEmbedThemeParams';
 import BuildSkewRefresher from './features/buildHashHandshake/BuildSkewRefresher';
 import { installChunkLoadErrorHandler } from './features/chunkErrorHandler/chunkErrorHandler';
@@ -106,16 +107,32 @@ const router = sentryCreateBrowserRouter([
             : [...Routes, ...CommercialWebAppRoutes],
     },
 ]);
+// A framed embed can get a new theme from the page around it.
+const EmbedAwareMantineProvider: FC<PropsWithChildren> = ({ children }) => {
+    const { theme } = useEmbedFrameState();
+    return (
+        <MantineProvider
+            forceColorScheme={
+                embedForcedColorScheme
+                    ? (theme ?? embedForcedColorScheme)
+                    : undefined
+            }
+        >
+            {children}
+        </MantineProvider>
+    );
+};
+
 const App = () => (
     <>
         <DocumentTitle />
 
         <ReactQueryProvider>
-            <MantineProvider forceColorScheme={embedForcedColorScheme}>
+            <EmbedAwareMantineProvider>
                 <ModalsProvider>
                     <RouterProvider router={router} />
                 </ModalsProvider>
-            </MantineProvider>
+            </EmbedAwareMantineProvider>
         </ReactQueryProvider>
     </>
 );

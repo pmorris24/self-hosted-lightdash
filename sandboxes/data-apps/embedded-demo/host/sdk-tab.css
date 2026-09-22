@@ -1,0 +1,43 @@
+/* This file loads before host.css, so the panel padding needs the extra class to win. */
+.proposal-app .sdk-tab{padding-top:40px;padding-bottom:40px}
+@media(max-width:1200px){.proposal-app .sdk-tab{padding-top:32px}}
+@media(max-width:650px){.proposal-app .sdk-tab{padding-top:28px;padding-bottom:32px}}
+.sdk-tab code{font:.92em ui-monospace,SFMono-Regular,monospace;color:var(--ui-purple)}
+.sdk-tab h2{font-size:28px;line-height:1.15;letter-spacing:-.5px;margin-top:12px}
+.sdk-tab .section-kicker{font-size:12px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* The host's own filter bar sits inside the host shell, above the SDK surface. */
+.sdk-host-controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:0 0 14px}
+.sdk-controls-note{font-size:12px;color:var(--ui-muted)}
+.sdk-panel{border:1px solid var(--ui-rail);border-radius:2px;background:var(--ui-bg);overflow:hidden}
+/* No fixed frame: the dashboard scrolls inside the host surface like any tall section. */
+.sdk-surface{height:620px;overflow:auto;overscroll-behavior:contain}
+.sdk-surface .notice{margin:24px}
+.sdk-panel footer{display:flex;justify-content:space-between;padding:12px 16px;font-size:12px;border-top:1px solid var(--ui-rail)}
+
+.sdk-argument{display:grid;grid-template-columns:1fr 1fr;gap:56px;max-width:1180px;margin:56px auto 0;padding-top:40px;border-top:1px dashed var(--ui-rail)}
+.sdk-argument ul{list-style:none;padding:0;margin:24px 0 0;display:grid;gap:16px}
+.sdk-argument li{font-size:14px;line-height:1.65;color:var(--ui-muted);padding-left:18px;position:relative}
+.sdk-argument li::before{content:'';position:absolute;left:0;top:.62em;width:7px;height:7px;border-radius:50%;background:var(--ui-good)}
+.sdk-argument>div:last-child li::before{background:var(--ui-bad)}
+.sdk-argument li b{color:var(--ui-text);font-weight:600}
+.sdk-argument .sdk-gap-kicker{color:var(--ui-bad)}
+
+.sdk-code-row{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:56px;align-items:start;max-width:1180px;margin:56px auto 0}
+.sdk-code-row>div:first-child>p:last-child{font-size:15px;line-height:1.7;color:var(--ui-muted);margin-top:16px}
+
+.sdk-compare{max-width:1180px;margin:56px auto 0;padding-top:40px;border-top:1px dashed var(--ui-rail)}
+.sdk-compare-scroll{overflow-x:auto;margin-top:28px}
+.sdk-compare table{width:100%;min-width:760px;border-collapse:collapse;font-size:14px}
+.sdk-compare th,.sdk-compare td{text-align:left;vertical-align:top;padding:14px 16px;border-bottom:1px solid var(--ui-rail);line-height:1.5}
+.sdk-compare thead th{font:500 16px/1.3 'Britti Sans',Inter,sans-serif;color:var(--ui-text);border-bottom:1px solid var(--ui-border)}
+.sdk-compare thead th small{font:12px Inter,sans-serif;color:var(--ui-purple);margin-left:6px}
+.sdk-compare tbody th{font-weight:500;color:var(--ui-muted);width:24%}
+.sdk-compare td{color:var(--ui-text)}
+.sdk-compare thead th[aria-current],.sdk-compare td[data-current]{background:var(--ui-subtle)}
+
+@media(max-width:950px){.sdk-argument,.sdk-code-row{grid-template-columns:1fr;gap:32px}.sdk-surface{height:540px}.sdk-tab h2{font-size:24px}}
+
+/* A whole Data App is taller than a dashboard tile grid, so its surface gets more room. */
+.sdk-app-surface{height:720px}

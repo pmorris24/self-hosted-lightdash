@@ -2829,7 +2829,10 @@ export class ProjectService extends BaseService {
             organizationUuid: project.organizationUuid,
             projectUuid,
             exploreNames:
-                isJwtUser(account) && account.access.content.type === 'chart'
+                isJwtUser(account) &&
+                (account.access.content.type === 'chart' ||
+                    account.access.content.type === 'project') &&
+                account.access.content.explores.length > 0
                     ? account.access.content.explores
                     : undefined,
         });
@@ -13283,5 +13286,11 @@ export class ProjectService extends BaseService {
         if (!isJwtUser(account)) return false;
 
         return account.access.content.type === 'chart';
+    }
+
+    static isDashboardEmbed(account: Account) {
+        if (!isJwtUser(account)) return false;
+
+        return account.access.content.type === 'dashboard';
     }
 }

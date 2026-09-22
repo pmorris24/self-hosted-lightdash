@@ -19,16 +19,26 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { useAccount } from '../../../hooks/user/useAccount';
 import { useAbilityContext } from '../../../providers/Ability/useAbilityContext';
 import {
+    getEmbedInstance,
+    registerEmbedInstance,
+} from '../../../utils/embedInstance';
+import {
     getFromInMemoryStorage,
     setToInMemoryStorage,
 } from '../../../utils/inMemoryStorage';
+import { type SdkChartSelection } from '../../features/embed/EmbedChart/types';
 import { type SdkFilter } from '../../features/embed/EmbedDashboard/types';
 import {
     LightdashEventType,
     type ChartSavedAction,
 } from '../../features/embed/events/types';
 import { useEmbedEventEmitter } from '../../features/embed/hooks/useEmbedEventEmitter';
+import {
+    useEmbedFrameChannel,
+    useEmbedFrameState,
+} from '../../features/embed/hooks/useEmbedFrameChannel';
 import EmbedProviderContext from './context';
+import { useEmbedInstance } from './EmbedInstanceContext';
 import { parseEmbedThemeParams } from './parseEmbedThemeParams';
 import { parseEmbedTimezoneParam } from './parseEmbedTimezoneParam';
 import {
@@ -48,6 +58,7 @@ type Props = {
     uiOverrides?: SdkUiOverrides;
     embedHeaders?: Record<string, string>;
     onExplore?: (options: EmbedExploreOptions) => void;
+    onSelect?: (selection: SdkChartSelection) => void;
     onBackToDashboard?: () => void;
     onChartSaved?: (chart: SavedChart, action: ChartSavedAction) => void;
     savedChart?: EmbedExploreChart;
@@ -82,12 +93,13 @@ const decodeEmbedJwtPayload = (
 const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
     children,
     embedToken: encodedToken,
-    filters,
+    filters: filtersProp,
     projectUuid: projectUuidFromProps,
     paletteUuid,
     contentOverrides,
     uiOverrides,
     onExplore,
+    onSelect,
     onBackToDashboard,
     onChartSaved,
     savedChart,
@@ -113,6 +125,23 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
         });
     }
 
+    // An SDK piece also keeps its token under its own instance, so another
+    // piece on the same page cannot overwrite it.
+    const embedInstance = useEmbedInstance();
+    if (embedInstance && embedToken) {
+        const registered = getEmbedInstance(embedInstance.embedInstanceId);
+        if (
+            registered?.embed.token !== embedToken ||
+            registered?.embed.projectUuid !== projectUuid ||
+            registered?.instanceUrl !== embedInstance.instanceUrl
+        ) {
+            registerEmbedInstance(embedInstance.embedInstanceId, {
+                embed: { projectUuid, token: embedToken },
+                instanceUrl: embedInstance.instanceUrl,
+            });
+        }
+    }
+
     // Parse theme params from URL once on mount (before hash is stripped)
     const [embedThemeParams] = useState(parseEmbedThemeParams);
     // Parse the session timezone (?timezone=) once on mount, alongside the theme.
@@ -127,8 +156,21 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
     const navigate = useNavigate();
     const location = useLocation();
     const queryClient = useQueryClient();
-    const { dispatchEmbedEvent } = useEmbedEventEmitter();
+    const { dispatchEmbedEvent, isEmbedEventReady } = useEmbedEventEmitter();
     const mode: EmbedMode = encodedToken ? 'sdk' : 'direct';
+    // A framed embed takes filters from the page around it; an SDK piece
+    // takes them as a prop.
+    useEmbedFrameChannel(mode === 'direct');
+    const frameState = useEmbedFrameState();
+    const filters =
+        mode === 'direct' ? (frameState.filters ?? filtersProp) : filtersProp;
+    const hasHostFilters = mode === 'sdk' || frameState.filters !== null;
+
+    useEffect(() => {
+        if (mode === 'direct' && isEmbedEventReady) {
+            dispatchEmbedEvent(LightdashEventType.Ready);
+        }
+    }, [mode, isEmbedEventReady, dispatchEmbedEvent]);
     const tokenFromStorageOrProps = embedToken || embed?.token;
     const embedWriteContext =
         account && 'embedWriteContext' in account
@@ -196,6 +238,7 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
         return {
             embedToken: tokenFromStorageOrProps,
             filters,
+            hasHostFilters,
             // Single resolution point for UI-string overrides; a future
             // direct-embed transport adds its source here.
             t: (input: UiStringKey) => uiOverrides?.[input],
@@ -206,6 +249,7 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
             paletteUuid,
             languageMap: contentOverrides,
             onExplore,
+            onSelect,
             onChartSaved: handleChartSaved,
             savedChart,
             customSqlProvenanceChartUuid,
@@ -224,11 +268,13 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
         embedJwtPayload?.writeActions,
         embedWriteContext,
         filters,
+        hasHostFilters,
         projectUuid,
         paletteUuid,
         contentOverrides,
         uiOverrides,
         onExplore,
+        onSelect,
         handleChartSaved,
         savedChart,
         customSqlProvenanceChartUuid,

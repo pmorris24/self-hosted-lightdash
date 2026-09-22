@@ -1,0 +1,26 @@
+.dashboard {
+    height: auto !important;
+    overflow: visible !important;
+}
+
+.chart {
+    height: 420px !important;
+    overflow: visible !important;
+}
+
+.dashboard,
+.chart {
+    scrollbar-width: none;
+}
+
+.dashboard *,
+.chart * {
+    scrollbar-width: none;
+}
+
+.dashboard::-webkit-scrollbar,
+.chart::-webkit-scrollbar,
+.dashboard *::-webkit-scrollbar,
+.chart *::-webkit-scrollbar {
+    display: none;
+}
