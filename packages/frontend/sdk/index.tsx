@@ -99,6 +99,7 @@ import { DataVisualization } from './data/DataVisualization';
 import { pivotRows } from './data/pivot';
 import {
     type DataChartSelection,
+    type DataChartStyleOptions,
     type DataChartType,
     type DataColumn,
     type DataFormatter,
@@ -1515,6 +1516,8 @@ type DataChartCommonProps = FilterPieceProps & {
     isLoading?: boolean;
     colorPalette?: string[];
     chartType: DataChartType;
+    // How the chart looks: legend, axes, labels, colours.
+    styleOptions?: DataChartStyleOptions;
     // A viewer clicked a data point.
     onSelect?: (selection: DataChartSelection) => void;
 };
@@ -1550,6 +1553,7 @@ const RowsDataChart: FC<RowsDataChartProps> = ({
     colorPalette,
     chartType,
     dataOptions,
+    styleOptions,
     onSelect,
     ...pieceProps
 }) => {
@@ -1576,9 +1580,10 @@ const RowsDataChart: FC<RowsDataChartProps> = ({
         [pivoted, dataOptions],
     );
 
+    const styleKey = JSON.stringify(styleOptions ?? null);
     const chartConfig = useMemo(
-        () => buildChartConfig(chartType, chartDataOptions),
-        [chartType, chartDataOptions],
+        () => buildChartConfig(chartType, chartDataOptions, styleOptions),
+        [chartType, chartDataOptions, styleKey], // eslint-disable-line react-hooks/exhaustive-deps
     );
     const valueColumns = useMemo(
         () => getValueColumns(chartDataOptions),
@@ -1608,6 +1613,7 @@ const RowsDataChart: FC<RowsDataChartProps> = ({
     const configKey = [
         chartType,
         chartDataOptions.category ?? '',
+        styleKey,
         ...valueColumns,
     ].join('\u0000');
     return (
@@ -1736,6 +1742,7 @@ const QueryChart: FC<QueryChartProps> = ({
     limit,
     chartType,
     dataOptions,
+    styleOptions,
     onSelect,
     ...pieceProps
 }) => {
@@ -1772,6 +1779,7 @@ const QueryChart: FC<QueryChartProps> = ({
             dataOptions={
                 dataOptions ?? defaultDataOptions(chartType, dimensions, metrics)
             }
+            styleOptions={styleOptions}
             onSelect={onSelect}
         />
     );
@@ -1792,8 +1800,22 @@ const DataChart: FC<DataChartProps> = (props) =>
 type WidgetBaseProps = Omit<WidgetFrameProps, 'children'>;
 
 type SavedChartWidgetProps = WidgetBaseProps & ChartProps;
-type DataChartWidgetProps = WidgetBaseProps & DataChartProps;
-type QueryChartWidgetProps = WidgetBaseProps & QueryChartProps;
+
+/**
+ * A chart widget's `styleOptions` carries both: the frame reads its own keys
+ * (header, border, padding and the rest) and the chart reads its own (legend,
+ * axes, labels, colours). Neither side sees the other's.
+ */
+export type ChartWidgetStyleOptions = WidgetStyleOptions &
+    DataChartStyleOptions;
+
+type WidgetChartStyleProps = { styleOptions?: ChartWidgetStyleOptions };
+type DataChartWidgetProps = WidgetBaseProps &
+    DataChartProps &
+    WidgetChartStyleProps;
+type QueryChartWidgetProps = WidgetBaseProps &
+    QueryChartProps &
+    WidgetChartStyleProps;
 
 /**
  * One widget for every chart input: a saved chart by `id`, a governed query,
@@ -1873,19 +1895,27 @@ const DataChartWidget: FC<DataChartWidgetProps> = ({
         styleOptions={styleOptions}
         height={height}
     >
-        <DataChart {...rest} />
+        <DataChart {...rest} styleOptions={styleOptions} />
     </WidgetFrame>
 );
 
 /** A chart that runs its own query, in a titled frame. */
-const QueryChartWidget: FC<QueryChartWidgetProps> = (props) => {
-    const { frame, rest } = splitWidgetProps(props);
-    return (
-        <WidgetFrame {...frame}>
-            <QueryChart {...rest} />
-        </WidgetFrame>
-    );
-};
+const QueryChartWidget: FC<QueryChartWidgetProps> = ({
+    title,
+    description,
+    styleOptions,
+    height,
+    ...rest
+}) => (
+    <WidgetFrame
+        title={title}
+        description={description}
+        styleOptions={styleOptions}
+        height={height}
+    >
+        <QueryChart {...rest} styleOptions={styleOptions} />
+    </WidgetFrame>
+);
 
 type PivotTableWidgetProps = WidgetBaseProps & DataPivotTableProps;
 
@@ -2335,6 +2365,7 @@ export type {
     WidgetProps,
     ChartModelQueryParams,
     ChartModelChartProps,
+    DataChartStyleOptions,
     LightdashQueryFilter,
     LightdashSimpleFilter,
     LightdashFilterRule,
