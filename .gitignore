@@ -112,6 +112,8 @@ flake.lock
 # Prometheus
 prometheus.yml
 data/
+# ...but not the SDK's own data components, which live in a folder of that name.
+!packages/frontend/sdk/data/
 
 # environment
 .env*
