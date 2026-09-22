@@ -12,6 +12,7 @@ import {
     type ComposedDashboardChangeEvent,
     type ComposedDashboardProps,
     type ComposedDashboardResult,
+    type ComposedWidget,
     type ComposedLayout,
     type UseComposedDashboardOptions,
 } from './types';
@@ -25,7 +26,10 @@ export const useComposedDashboard = (
     initialDashboard: ComposedDashboardProps,
     options: UseComposedDashboardOptions = {},
 ): ComposedDashboardResult => {
-    const { title, widgets } = initialDashboard;
+    const { title } = initialDashboard;
+    const [widgets, setWidgetsState] = useState<ComposedWidget[]>(
+        initialDashboard.widgets,
+    );
     const [filters, setFiltersState] = useState<SdkFilter[]>(
         initialDashboard.filters ?? [],
     );
@@ -67,6 +71,50 @@ export const useComposedDashboard = (
         [updateFilters],
     );
     const clearFilters = useCallback(() => updateFilters([]), [updateFilters]);
+
+    const widgetsRef = useRef(widgets);
+    const updateWidgets = useCallback(
+        (next: ComposedWidget[]) => {
+            widgetsRef.current = next;
+            setWidgetsState(next);
+            emit({ type: 'widgets/updated', payload: next });
+        },
+        [emit],
+    );
+    const setWidgets = useCallback(
+        (next: ComposedWidget[]) => updateWidgets(next),
+        [updateWidgets],
+    );
+    const addWidget = useCallback(
+        (widget: ComposedWidget) =>
+            updateWidgets([
+                ...widgetsRef.current.filter((item) => item.id !== widget.id),
+                widget,
+            ]),
+        [updateWidgets],
+    );
+    const removeWidget = useCallback(
+        (widgetId: string) =>
+            updateWidgets(
+                widgetsRef.current.filter((item) => item.id !== widgetId),
+            ),
+        [updateWidgets],
+    );
+
+    // A dashboard read from a model arrives after the first render, so the
+    // widgets it brings replace the ones held here. Callers usually build
+    // that array inline, so a new array of the same widgets is not a change:
+    // comparing by content is what keeps `addWidget` from being undone on
+    // the next render.
+    const initialWidgets = initialDashboard.widgets;
+    const incoming = JSON.stringify(initialWidgets);
+    const syncedRef = useRef(incoming);
+    useEffect(() => {
+        if (syncedRef.current === incoming) return;
+        syncedRef.current = incoming;
+        widgetsRef.current = initialWidgets;
+        setWidgetsState(initialWidgets);
+    }, [incoming]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const setLayout = useCallback(
         (next: ComposedLayout) => {
@@ -133,5 +181,8 @@ export const useComposedDashboard = (
         removeFilter,
         clearFilters,
         setLayout,
+        setWidgets,
+        addWidget,
+        removeWidget,
     };
 };

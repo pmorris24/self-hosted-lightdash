@@ -41,6 +41,7 @@ export type ComposedDashboardProps = {
 
 export type ComposedDashboardChangeEvent =
     | { type: 'filters/updated'; payload: SdkFilter[] }
+    | { type: 'widgets/updated'; payload: ComposedWidget[] }
     | {
           type: 'selection/changed';
           payload: { widgetId: string; selection: SdkChartSelection };
@@ -72,4 +73,9 @@ export type ComposedDashboardResult = {
     removeFilter: (filter: Pick<SdkFilter, 'model' | 'field'>) => void;
     clearFilters: () => void;
     setLayout: (layout: ComposedLayout) => void;
+    // A dashboard a page can build up: the layout makes room for a widget
+    // that arrives, and forgets one that leaves.
+    setWidgets: (widgets: ComposedWidget[]) => void;
+    addWidget: (widget: ComposedWidget) => void;
+    removeWidget: (widgetId: string) => void;
 };

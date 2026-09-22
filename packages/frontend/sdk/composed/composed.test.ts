@@ -266,3 +266,53 @@ describe('useComposedDashboard', () => {
         expect(onChange).toHaveBeenCalledWith({ type: 'layout/updated', payload: layout });
     });
 });
+
+describe('useComposedDashboard widgets', () => {
+    it('keeps an added widget when the caller re-renders with the same list', () => {
+        const widgets = [{ id: 'a', chartUuid: 'chart-a' }];
+        const { result, rerender } = renderHook(
+            ({ list }) => useComposedDashboard({ widgets: list }),
+            { initialProps: { list: widgets } },
+        );
+        act(() => result.current.addWidget({ id: 'b', chartUuid: 'chart-b' }));
+        expect(result.current.dashboard.widgets.map((w) => w.id)).toEqual([
+            'a',
+            'b',
+        ]);
+        // A caller writing `widgets={[...]}` inline hands over a new array
+        // every render; the same widgets are not a change.
+        rerender({ list: [{ id: 'a', chartUuid: 'chart-a' }] });
+        expect(result.current.dashboard.widgets.map((w) => w.id)).toEqual([
+            'a',
+            'b',
+        ]);
+    });
+
+    it('takes the widgets of a dashboard that actually changed', () => {
+        const { result, rerender } = renderHook(
+            ({ list }) => useComposedDashboard({ widgets: list }),
+            { initialProps: { list: [{ id: 'a', chartUuid: 'chart-a' }] } },
+        );
+        act(() => result.current.addWidget({ id: 'b', chartUuid: 'chart-b' }));
+        rerender({ list: [{ id: 'c', chartUuid: 'chart-c' }] });
+        expect(result.current.dashboard.widgets.map((w) => w.id)).toEqual(['c']);
+    });
+
+    it('removes a widget and forgets its cell', () => {
+        const { result } = renderHook(() =>
+            useComposedDashboard({
+                widgets: [
+                    { id: 'a', chartUuid: 'chart-a' },
+                    { id: 'b', chartUuid: 'chart-b' },
+                ],
+            }),
+        );
+        act(() => result.current.removeWidget('a'));
+        expect(result.current.dashboard.widgets.map((w) => w.id)).toEqual(['b']);
+        const cells = result.current.dashboard.layout.columns.flatMap((column) =>
+            column.rows.flatMap((row) => row.cells.map((cell) => cell.widgetId)),
+        );
+        expect(cells).toEqual(['b']);
+    });
+});
+
