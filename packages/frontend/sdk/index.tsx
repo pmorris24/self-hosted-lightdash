@@ -133,6 +133,13 @@ import {
     type UseAgentAnswerResult,
 } from './ai/useAgentAnswer';
 import { useAgentSuggestions } from './ai/useAgentSuggestions';
+import { useAgentConversation } from './ai/useAgentConversation';
+import {
+    agentChartTranslator,
+    type AgentArtifact,
+    type AgentChartProps,
+    type AgentChartWidgetProps,
+} from './ai/agentChartTranslator';
 import { LoadingOverlay } from './helpers/LoadingOverlay';
 import {
     formatDate,
@@ -2274,6 +2281,8 @@ const Lightdash = {
     LoadingOverlay,
     AgentInsights,
     useAgentAnswer,
+    useAgentConversation,
+    agentChartTranslator,
     useAgentSuggestions,
     useSyncedState,
     useChartModel,
@@ -2365,6 +2374,8 @@ export {
     LoadingOverlay,
     AgentInsights,
     useAgentAnswer,
+    useAgentConversation,
+    agentChartTranslator,
     useAgentSuggestions,
     useSyncedState,
     useChartModel,
@@ -2469,6 +2480,9 @@ export type {
     CustomWidgetProps,
     AgentAnswer,
     UseAgentAnswerResult,
+    AgentArtifact,
+    AgentChartProps,
+    AgentChartWidgetProps,
     LightdashTheme,
     LightdashChartFields,
     LightdashChartModel,
