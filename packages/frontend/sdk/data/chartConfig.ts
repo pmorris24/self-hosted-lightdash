@@ -126,6 +126,7 @@ const buildLegend = (
         legend: {
             ...(legend.show === undefined ? {} : { show: legend.show }),
             ...(placement?.legend ?? {}),
+            ...(legend.symbol ? { icon: legend.symbol } : {}),
         },
         // A hidden legend needs no room.
         grid: legend.show === false ? {} : (placement?.grid ?? {}),
@@ -169,10 +170,17 @@ const buildSeriesStyle = (
         : {}),
 });
 
-const axisEntry = (axis: DataChartStyleOptions['yAxis']) => ({
+const axisEntry = (axis: DataChartStyleOptions['xAxis']) => ({
     ...(axis?.title ? { name: axis.title } : {}),
-    ...(axis?.min === undefined ? {} : { min: String(axis.min) }),
-    ...(axis?.max === undefined ? {} : { max: String(axis.max) }),
+    ...(axis && 'min' in axis && axis.min !== undefined
+        ? { min: String(axis.min) }
+        : {}),
+    ...(axis && 'max' in axis && axis.max !== undefined
+        ? { max: String(axis.max) }
+        : {}),
+    ...(axis?.rotateLabels === undefined ? {} : { rotate: axis.rotateLabels }),
+    ...(axis?.reverse === undefined ? {} : { inverse: axis.reverse }),
+    ...(axis?.zoom === undefined ? {} : { enableDataZoom: axis.zoom }),
 });
 
 /** Simple data options to the chart config the Lightdash renderer reads. */
@@ -235,6 +243,9 @@ export const buildChartConfig = (
                         ...(yAxis?.show === undefined
                             ? {}
                             : { showYAxis: yAxis.show }),
+                        ...(styleOptions.connectNulls === undefined
+                            ? {}
+                            : { connectNulls: styleOptions.connectNulls }),
                     },
                     eChartsConfig: {
                         series,

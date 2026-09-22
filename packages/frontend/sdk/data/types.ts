@@ -85,12 +85,20 @@ export type DataChartStyleOptions = {
         show?: boolean;
         // Which edge of the chart the legend sits on. Default: bottom.
         position?: 'top' | 'bottom' | 'left' | 'right';
+        // The shape drawn beside each series name.
+        symbol?: 'circle' | 'rect' | 'roundRect' | 'triangle' | 'diamond';
     };
     xAxis?: {
         title?: string;
         // The axis line and its labels. Default: shown.
         show?: boolean;
         gridLines?: boolean;
+        // Turn the labels by this many degrees, for names that collide.
+        rotateLabels?: number;
+        // Run the axis the other way.
+        reverse?: boolean;
+        // A slider under the chart for panning a long axis.
+        zoom?: boolean;
     };
     yAxis?: {
         title?: string;
@@ -98,7 +106,11 @@ export type DataChartStyleOptions = {
         gridLines?: boolean;
         min?: number;
         max?: number;
+        rotateLabels?: number;
+        reverse?: boolean;
     };
+    // Line and area charts: join across a gap rather than breaking the line.
+    connectNulls?: boolean;
     // The value printed on each mark.
     dataLabels?: {
         show?: boolean;

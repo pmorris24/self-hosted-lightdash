@@ -470,3 +470,25 @@ describe('buildTableConfig', () => {
     });
 });
 
+describe('buildChartConfig axis and legend extras', () => {
+    it('rotates, reverses and zooms an axis', () => {
+        const config = buildChartConfig(
+            'column',
+            { category: 'month', value: 'revenue' },
+            {
+                xAxis: { rotateLabels: 45, reverse: true, zoom: true },
+                yAxis: { reverse: true },
+                connectNulls: false,
+                legend: { symbol: 'circle' },
+            },
+        );
+        if (config.type !== ChartType.CARTESIAN) throw new Error('not cartesian');
+        expect(config.config.eChartsConfig.xAxis).toEqual([
+            { rotate: 45, inverse: true, enableDataZoom: true },
+        ]);
+        expect(config.config.eChartsConfig.yAxis).toEqual([{ inverse: true }]);
+        expect(config.config.layout.connectNulls).toBe(false);
+        expect(config.config.eChartsConfig.legend).toEqual({ icon: 'circle' });
+    });
+});
+
