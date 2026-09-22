@@ -17,6 +17,7 @@ import {
     type RunMetricQueryOptions,
     type SearchFieldValuesOptions,
 } from './api';
+import { useResolvedConfig } from './connection';
 import { pivotRows, type PivotedData } from './data/pivot';
 import {
     toMetricQueryParams,
@@ -35,6 +36,8 @@ export type UseLightdashApiResult<T> = UseLightdashApiState<T> & {
 
 type UseLightdashApiOptions = {
     enabled?: boolean;
+    // The connection to run against. Default: the page's `Lightdash.Provider`.
+    config?: LightdashApiClientConfig;
 };
 
 const toError = (error: unknown) => {
@@ -124,10 +127,10 @@ const useLightdashApiClient = (config: LightdashApiClientConfig) => {
 };
 
 export const useLightdashContent = (
-    config: LightdashApiClientConfig,
     args: ListContentOptions = {},
     options: UseLightdashApiOptions = {},
 ): UseLightdashApiResult<LightdashContentResults> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const key = JSON.stringify([
         'content',
@@ -156,9 +159,9 @@ export type UseDashboardModelOptions = UseLightdashApiOptions & {
 };
 
 export const useDashboardModel = (
-    config: LightdashApiClientConfig,
     options: UseDashboardModelOptions = {},
 ): UseLightdashApiResult<EmbedDashboard> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const { dashboardUuid } = options;
     const key = JSON.stringify([
@@ -182,10 +185,10 @@ export const useDashboardModel = (
 
 /** The visible dimensions and metrics of one explore. */
 export const useExploreFields = (
-    config: LightdashApiClientConfig,
     args: { exploreName: string; projectUuid?: string },
     options: UseLightdashApiOptions = {},
 ): UseLightdashApiResult<LightdashExploreField[]> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const key = JSON.stringify([
         'explore-fields',
@@ -208,10 +211,10 @@ export const useExploreFields = (
 
 /** The model of one saved chart: its explore, dimensions and metrics. */
 export const useChartModel = (
-    config: LightdashApiClientConfig,
     args: { chartUuid: string; projectUuid?: string },
     options: UseLightdashApiOptions = {},
 ): UseLightdashApiResult<LightdashChartModel> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const { chartUuid, projectUuid } = args;
     const key = JSON.stringify([
@@ -268,10 +271,10 @@ export type UseMetricQueryOptions = UseLightdashApiOptions & {
 
 /** A governed query on one explore, as flat rows for `DataChart`. */
 export const useMetricQuery = (
-    config: LightdashApiClientConfig,
     args: Omit<RunMetricQueryOptions, 'signal'>,
     options: UseMetricQueryOptions = {},
 ): UseLightdashApiResult<LightdashQueryRows> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const argsKey = JSON.stringify(args);
     const key = JSON.stringify([
@@ -324,12 +327,12 @@ export type UseChartQueryResult = {
  * query. `chartModelTranslator` turns the two results into props.
  */
 export const useChartQuery = (
-    config: LightdashApiClientConfig,
     args: UseChartQueryArgs,
     options: UseMetricQueryOptions = {},
 ): UseChartQueryResult => {
+    const config = useResolvedConfig(options.config);
     const { chartUuid, projectUuid, overrides } = args;
-    const chart = useChartModel(config, { chartUuid, projectUuid }, options);
+    const chart = useChartModel({ chartUuid, projectUuid }, options);
     const overridesKey = JSON.stringify(overrides ?? {});
     const queryArgs = useMemo(
         () =>
@@ -344,7 +347,7 @@ export const useChartQuery = (
                 : { exploreName: '', dimensions: [], metrics: [], projectUuid },
         [chart.data, overridesKey, projectUuid],
     );
-    const query = useMetricQuery(config, queryArgs, {
+    const query = useMetricQuery(queryArgs, {
         ...options,
         enabled: options.enabled !== false && !!chart.data,
     });
@@ -379,12 +382,12 @@ export type UseMetricQueryPivotResult = Omit<
 
 /** A governed query, pivoted in the page: one column per `columnField` value. */
 export const useMetricQueryPivot = (
-    config: LightdashApiClientConfig,
     args: UseMetricQueryPivotArgs,
     options: UseMetricQueryOptions = {},
 ): UseMetricQueryPivotResult => {
+    const config = useResolvedConfig(options.config);
     const { rowFields, columnField, ...queryArgs } = args;
-    const query = useMetricQuery(config, queryArgs, options);
+    const query = useMetricQuery(queryArgs, options);
     const rowFieldsKey = rowFields.join('\u0000');
     const metricsKey = queryArgs.metrics.join('\u0000');
     const data = useMemo(
@@ -408,11 +411,11 @@ export const useMetricQueryPivot = (
  * the SDK has no hook for yet. The token decides what the call may read.
  */
 export const useLightdashFetch = <T,>(
-    config: LightdashApiClientConfig,
     path: string,
     fetchOptions: LightdashFetchOptions = {},
     options: UseLightdashApiOptions = {},
 ): UseLightdashApiResult<T> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const key = JSON.stringify([
         'fetch',
@@ -436,10 +439,10 @@ export const useLightdashFetch = <T,>(
 
 /** Values of one field, for a filter control a host page builds itself. */
 export const useFieldValues = (
-    config: LightdashApiClientConfig,
     args: SearchFieldValuesOptions,
     options: UseLightdashApiOptions = {},
 ): UseLightdashApiResult<FieldValueSearchResult> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const key = JSON.stringify([
         'field-values',
@@ -460,10 +463,10 @@ export const useFieldValues = (
 };
 
 export const useLightdashAiAgentThreads = (
-    config: LightdashApiClientConfig,
     args: ListAiAgentThreadsOptions,
     options: UseLightdashApiOptions = {},
 ): UseLightdashApiResult<LightdashAiAgentThreadResults> => {
+    const config = useResolvedConfig(options.config);
     const client = useLightdashApiClient(config);
     const key = JSON.stringify([
         'ai-agent-threads',

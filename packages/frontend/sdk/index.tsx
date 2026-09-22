@@ -184,12 +184,19 @@ import {
     type ChartModelDataPivotTableProps,
     type ChartModelDataTableProps,
     type ChartModelPivotTableWidgetProps,
-    type ChartModelQueryChartProps,
-    type ChartModelQueryChartWidgetProps,
+    type ChartModelChartProps,
+    type ChartModelChartWidgetProps,
     type ChartModelQueryParams,
     type ChartModelWidgetProps,
 } from './model/chartModelTranslator';
 import { useComposedDashboard } from './composed/useComposedDashboard';
+import {
+    SdkConnectionContext,
+    SdkConnectionProvider,
+    useLightdashConfig,
+    type SdkConnection,
+    type SdkProviderProps,
+} from './connection';
 import {
     filterFactory,
     type LightdashDateFilterSettings,
@@ -332,80 +339,11 @@ const persistInstanceUrl = (instanceUrl: string) => {
     }
 };
 
-type SdkConnection = Pick<BaseProps, 'instanceUrl' | 'token'> &
-    Pick<BaseProps, 'theme' | 'styles'>;
+type ProviderProps = SdkProviderProps;
 
-const SdkConnectionContext = createContext<SdkConnection | null>(null);
-
-type ProviderProps = PropsWithChildren<SdkConnection>;
-
-/**
- * One connection for a host page. Pieces inside it can omit `instanceUrl`,
- * `token`, `theme` and `styles`; a prop on a piece still wins.
- */
-const Provider: FC<ProviderProps> = ({
-    children,
-    instanceUrl,
-    token,
-    theme,
-    styles,
-}) => {
-    const connection = useMemo(
-        () => ({ instanceUrl, token, theme, styles }),
-        [instanceUrl, token, theme, styles],
-    );
-    return (
-        <SdkConnectionContext.Provider value={connection}>
-            {children}
-        </SdkConnectionContext.Provider>
-    );
-};
+const Provider = SdkConnectionProvider;
 
 type ConnectionProps = Partial<SdkConnection>;
-
-/**
- * The hook config of the page's `Lightdash.Provider`, for the query hooks:
- * the instance, the project of the token and the token itself. Until a token
- * promise resolves, the config has no project, which keeps the hooks idle.
- */
-const useLightdashConfig = (): LightdashApiClientConfig => {
-    const shared = useContext(SdkConnectionContext);
-    if (!shared) {
-        throw new Error(
-            'Lightdash SDK: useLightdashConfig needs a <Lightdash.Provider> above it.',
-        );
-    }
-    const { instanceUrl, token: tokenOrTokenPromise } = shared;
-    const [token, setToken] = useState<string | null>(
-        typeof tokenOrTokenPromise === 'string' ? tokenOrTokenPromise : null,
-    );
-
-    useEffect(() => {
-        let isCurrent = true;
-        Promise.resolve(tokenOrTokenPromise).then((resolved) => {
-            if (isCurrent) setToken(resolved);
-        });
-        return () => {
-            isCurrent = false;
-        };
-    }, [tokenOrTokenPromise]);
-
-    return useMemo(() => {
-        if (!token) return { instanceUrl };
-        const { payload } = decodeJWT(token);
-        const projectUuid =
-            payload &&
-            'content' in payload &&
-            typeof payload.content?.projectUuid === 'string'
-                ? payload.content.projectUuid
-                : undefined;
-        return {
-            instanceUrl,
-            projectUuid,
-            auth: { type: 'embedToken', token },
-        };
-    }, [instanceUrl, token]);
-};
 
 type ContentTokenState = {
     token: string | null;
@@ -1805,15 +1743,17 @@ const QueryChart: FC<QueryChartProps> = ({
         useSdkConnection(pieceProps);
     const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
     const query = useMetricQuery(
-        {
-            instanceUrl,
-            projectUuid: tokenContext?.projectUuid,
-            auth: tokenContext
-                ? { type: 'embedToken', token: tokenContext.token }
-                : undefined,
-        },
         { exploreName, dimensions, metrics, filters, sorts, limit },
-        { enabled: !!tokenContext },
+        {
+            enabled: !!tokenContext,
+            config: {
+                instanceUrl,
+                projectUuid: tokenContext?.projectUuid,
+                auth: tokenContext
+                    ? { type: 'embedToken', token: tokenContext.token }
+                    : undefined,
+            },
+        },
     );
     if (query.error) {
         return (
@@ -1851,9 +1791,15 @@ const DataChart: FC<DataChartProps> = (props) =>
 
 type WidgetBaseProps = Omit<WidgetFrameProps, 'children'>;
 
-type ChartWidgetProps = WidgetBaseProps & ChartProps;
+type SavedChartWidgetProps = WidgetBaseProps & ChartProps;
 type DataChartWidgetProps = WidgetBaseProps & DataChartProps;
 type QueryChartWidgetProps = WidgetBaseProps & QueryChartProps;
+
+/**
+ * One widget for every chart input: a saved chart by `id`, a governed query,
+ * or `rows` the host already has.
+ */
+type ChartWidgetProps = SavedChartWidgetProps | DataChartWidgetProps;
 
 const splitWidgetProps = <T extends WidgetBaseProps>({
     title,
@@ -1867,7 +1813,7 @@ const splitWidgetProps = <T extends WidgetBaseProps>({
  * A saved chart by its id, in a frame. The frame takes the chart's name and
  * description from Lightdash unless the host sets them.
  */
-const ChartWidget: FC<ChartWidgetProps> = (props) => {
+const SavedChartWidget: FC<SavedChartWidgetProps> = (props) => {
     const { frame, rest } = splitWidgetProps(props);
     const { token: tokenOrTokenPromise, instanceUrl } = useSdkConnection(rest);
     const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise, {
@@ -1877,15 +1823,17 @@ const ChartWidget: FC<ChartWidgetProps> = (props) => {
     const needsModel =
         frame.title === undefined || frame.description === undefined;
     const model = useChartModel(
-        {
-            instanceUrl,
-            projectUuid: tokenContext?.projectUuid,
-            auth: tokenContext
-                ? { type: 'embedToken', token: tokenContext.token }
-                : undefined,
-        },
         { chartUuid: rest.id },
-        { enabled: !!tokenContext && needsModel },
+        {
+            enabled: !!tokenContext && needsModel,
+            config: {
+                instanceUrl,
+                projectUuid: tokenContext?.projectUuid,
+                auth: tokenContext
+                    ? { type: 'embedToken', token: tokenContext.token }
+                    : undefined,
+            },
+        },
     );
     return (
         <WidgetFrame
@@ -1899,6 +1847,17 @@ const ChartWidget: FC<ChartWidgetProps> = (props) => {
         </WidgetFrame>
     );
 };
+
+/**
+ * A chart in a titled frame, from any input: a saved chart by `id`, a
+ * governed query, or host rows.
+ */
+const ChartWidget: FC<ChartWidgetProps> = (props) =>
+    'id' in props ? (
+        <SavedChartWidget {...props} />
+    ) : (
+        <DataChartWidget {...props} />
+    );
 
 /** A chart from a query or from host rows, in a titled frame. */
 const DataChartWidget: FC<DataChartWidgetProps> = ({
@@ -1949,7 +1908,7 @@ type CustomWidgetFrameProps = WidgetBaseProps &
     };
 
 type WidgetProps =
-    | ({ widgetType: 'chart' } & ChartWidgetProps)
+    | ({ widgetType: 'chart' } & SavedChartWidgetProps)
     | ({ widgetType: 'dataChart' } & DataChartWidgetProps)
     | ({ widgetType: 'queryChart' } & QueryChartWidgetProps)
     | ({ widgetType: 'pivot' } & PivotTableWidgetProps)
@@ -1964,7 +1923,7 @@ const Widget: FC<WidgetProps> = (props) => {
     switch (props.widgetType) {
         case 'chart': {
             const { widgetType: _chart, ...chartProps } = props;
-            return <ChartWidget {...chartProps} />;
+            return <SavedChartWidget {...chartProps} />;
         }
         case 'dataChart': {
             const { widgetType: _dataChart, ...dataChartProps } = props;
@@ -2041,13 +2000,6 @@ const DrilldownChart: FC<DrilldownChartProps> = ({
     const drilldown = useDrilldown({ paths, onChange });
     const query = useMetricQuery(
         {
-            instanceUrl,
-            projectUuid: tokenContext?.projectUuid,
-            auth: tokenContext
-                ? { type: 'embedToken', token: tokenContext.token }
-                : undefined,
-        },
-        {
             exploreName,
             dimensions: [drilldown.dimension],
             metrics,
@@ -2055,7 +2007,16 @@ const DrilldownChart: FC<DrilldownChartProps> = ({
             sorts: [{ field: drilldown.dimension }],
             limit,
         },
-        { enabled: !!tokenContext },
+        {
+            enabled: !!tokenContext,
+            config: {
+                instanceUrl,
+                projectUuid: tokenContext?.projectUuid,
+                auth: tokenContext
+                    ? { type: 'embedToken', token: tokenContext.token }
+                    : undefined,
+            },
+        },
     );
     // The category shows the server's display text; a click maps it back to
     // the raw value, which is what the filter of the next level needs.
@@ -2191,6 +2152,7 @@ const Lightdash = {
     FiltersPanel,
     Widget,
     ChartWidget,
+    SavedChartWidget,
     DataChartWidget,
     QueryChart,
     QueryChartWidget,
@@ -2281,6 +2243,7 @@ export {
     FiltersPanel,
     Widget,
     ChartWidget,
+    SavedChartWidget,
     DataChartWidget,
     QueryChart,
     QueryChartWidget,
@@ -2364,13 +2327,14 @@ export type {
     ContextMenuItem,
     ContextMenuSection,
     ChartWidgetProps,
+    SavedChartWidgetProps,
     DataChartWidgetProps,
     QueryChartProps,
     QueryChartWidgetProps,
     PivotTableWidgetProps,
     WidgetProps,
     ChartModelQueryParams,
-    ChartModelQueryChartProps,
+    ChartModelChartProps,
     LightdashQueryFilter,
     LightdashSimpleFilter,
     LightdashFilterRule,
@@ -2379,7 +2343,7 @@ export type {
     LightdashFilterValue,
     LightdashUnitOfTime,
     LightdashDateFilterSettings,
-    ChartModelQueryChartWidgetProps,
+    ChartModelChartWidgetProps,
     ChartModelDataChartProps,
     ChartModelDataTableProps,
     ChartModelDataPivotTableProps,

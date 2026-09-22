@@ -51,14 +51,15 @@ export type ChartModelWidgetProps =
     | ({ widgetType: 'dataChart' } & ChartModelDataChartWidgetProps)
     | ({ widgetType: 'pivot' } & ChartModelPivotTableWidgetProps);
 
-// Props for `QueryChart`, from the model alone: the chart runs the query.
-export type ChartModelQueryChartProps = ChartModelQueryParams & {
+// Props for `Chart` and `ChartWidget`, from the model alone: the chart runs
+// the query itself.
+export type ChartModelChartProps = ChartModelQueryParams & {
     chartType: DataChartType;
     dataOptions: DataOptions;
 };
 
-export type ChartModelQueryChartWidgetProps = ChartModelFrameProps &
-    ChartModelQueryChartProps;
+export type ChartModelChartWidgetProps = ChartModelFrameProps &
+    ChartModelChartProps;
 
 const CHART_KIND_TO_DATA_CHART_TYPE: Record<string, DataChartType> = {
     line: 'line',
@@ -176,14 +177,14 @@ export const toDataOptions = (
     );
 
 /**
- * Props for `QueryChart`, from the model alone: the saved query and the
- * saved look. The chart runs the query itself, so no rows are needed. A
- * table chart draws as columns unless `chartType` overrides it.
+ * Props for a chart, from the model alone: the saved query and the saved
+ * look. The chart runs the query itself, so no rows are needed. A table
+ * chart draws as columns unless `chartType` overrides it.
  */
-export const toQueryChartProps = (
+export const toChartProps = (
     chart: LightdashChartModel,
-    overrides: Partial<ChartModelQueryChartProps> = {},
-): ChartModelQueryChartProps => {
+    overrides: Partial<ChartModelChartProps> = {},
+): ChartModelChartProps => {
     const { chartType: chartTypeOverride, dataOptions, ...queryOverrides } =
         overrides;
     const savedType = toDataChartType(chart.chartKind);
@@ -256,13 +257,13 @@ export const toDataChartWidgetProps = (
     ...toDataChartProps(chart, result),
 });
 
-/** Props for `QueryChartWidget`: the query chart in a frame titled with its name. */
-export const toQueryChartWidgetProps = (
+/** Props for `ChartWidget`: the chart in a frame titled with its name. */
+export const toChartWidgetProps = (
     chart: LightdashChartModel,
-    overrides: Partial<ChartModelQueryChartProps> = {},
-): ChartModelQueryChartWidgetProps => ({
+    overrides: Partial<ChartModelChartProps> = {},
+): ChartModelChartWidgetProps => ({
     ...toFrameProps(chart),
-    ...toQueryChartProps(chart, overrides),
+    ...toChartProps(chart, overrides),
 });
 
 /**
@@ -294,7 +295,7 @@ export const chartModelTranslator = {
     toDataTableProps,
     toDataPivotTableProps,
     toDataChartWidgetProps,
-    toQueryChartProps,
-    toQueryChartWidgetProps,
+    toChartProps,
+    toChartWidgetProps,
     toWidgetProps,
 };

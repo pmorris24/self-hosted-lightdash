@@ -137,7 +137,7 @@ describe('chartModelTranslator', () => {
     });
 
     it('builds query chart props from the model alone', () => {
-        expect(chartModelTranslator.toQueryChartProps(chart)).toEqual({
+        expect(chartModelTranslator.toChartProps(chart)).toEqual({
             exploreName: 'orders',
             dimensions: ['orders_year', 'orders_status'],
             metrics: ['orders_revenue'],
@@ -156,7 +156,7 @@ describe('chartModelTranslator', () => {
     });
 
     it('lets the page override the query, the type and the options', () => {
-        const props = chartModelTranslator.toQueryChartProps(chart, {
+        const props = chartModelTranslator.toChartProps(chart, {
             chartType: 'line',
             limit: 10,
             sorts: [{ field: 'orders_year', descending: true }],
@@ -168,7 +168,7 @@ describe('chartModelTranslator', () => {
         ]);
         expect(props.dataOptions.category).toBe('orders_year');
         expect(
-            chartModelTranslator.toQueryChartProps(chart, {
+            chartModelTranslator.toChartProps(chart, {
                 dataOptions: { category: 'orders_status', value: [] },
             }).dataOptions,
         ).toEqual({ category: 'orders_status', value: [] });
@@ -176,13 +176,13 @@ describe('chartModelTranslator', () => {
 
     it('draws a table chart as columns and frames the widget', () => {
         const table = { ...chart, chartKind: 'table' };
-        expect(chartModelTranslator.toQueryChartProps(table).chartType).toBe(
+        expect(chartModelTranslator.toChartProps(table).chartType).toBe(
             'column',
         );
-        expect(chartModelTranslator.toQueryChartWidgetProps(chart)).toEqual({
+        expect(chartModelTranslator.toChartWidgetProps(chart)).toEqual({
             title: 'Revenue by status',
             description: 'Per year',
-            ...chartModelTranslator.toQueryChartProps(chart),
+            ...chartModelTranslator.toChartProps(chart),
         });
     });
 });
