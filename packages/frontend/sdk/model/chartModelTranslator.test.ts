@@ -129,4 +129,50 @@ describe('chartModelTranslator', () => {
             ),
         ).not.toHaveProperty('description');
     });
+
+    it('builds query chart props from the model alone', () => {
+        expect(chartModelTranslator.toQueryChartProps(chart)).toEqual({
+            exploreName: 'orders',
+            dimensions: ['orders_year', 'orders_status'],
+            metrics: ['orders_revenue'],
+            limit: 500,
+            chartType: 'column',
+            dataOptions: {
+                category: 'orders_year',
+                value: ['orders_revenue', 'orders_share'],
+                breakBy: 'orders_status',
+            },
+        });
+    });
+
+    it('lets the page override the query, the type and the options', () => {
+        const props = chartModelTranslator.toQueryChartProps(chart, {
+            chartType: 'line',
+            limit: 10,
+            sorts: [{ field: 'orders_year', descending: true }],
+        });
+        expect(props.chartType).toBe('line');
+        expect(props.limit).toBe(10);
+        expect(props.sorts).toEqual([
+            { field: 'orders_year', descending: true },
+        ]);
+        expect(props.dataOptions.category).toBe('orders_year');
+        expect(
+            chartModelTranslator.toQueryChartProps(chart, {
+                dataOptions: { category: 'orders_status', value: [] },
+            }).dataOptions,
+        ).toEqual({ category: 'orders_status', value: [] });
+    });
+
+    it('draws a table chart as columns and frames the widget', () => {
+        const table = { ...chart, chartKind: 'table' };
+        expect(chartModelTranslator.toQueryChartProps(table).chartType).toBe(
+            'column',
+        );
+        expect(chartModelTranslator.toQueryChartWidgetProps(chart)).toEqual({
+            title: 'Revenue by status',
+            description: 'Per year',
+            ...chartModelTranslator.toQueryChartProps(chart),
+        });
+    });
 });

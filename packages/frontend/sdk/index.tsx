@@ -183,6 +183,8 @@ import {
     type ChartModelDataPivotTableProps,
     type ChartModelDataTableProps,
     type ChartModelPivotTableWidgetProps,
+    type ChartModelQueryChartProps,
+    type ChartModelQueryChartWidgetProps,
     type ChartModelQueryParams,
     type ChartModelWidgetProps,
 } from './model/chartModelTranslator';
@@ -1748,10 +1750,70 @@ const DataPivotTable: FC<DataPivotTableProps> = ({
 
 type TypedDataChartProps = Omit<DataChartProps, 'chartType'>;
 
+type QueryChartProps = Omit<DataPieceProps, 'rows' | 'columns'> &
+    ChartModelQueryParams & {
+        chartType: DataChartType;
+        dataOptions: DataOptions;
+        // A viewer clicked a data point.
+        onSelect?: DataChartProps['onSelect'];
+    };
+
+/**
+ * A chart that runs its own governed query. The props are a query on one
+ * explore and the look to draw it with, the shape `chartModelTranslator`
+ * returns for a saved chart, so a page can change either before it renders.
+ */
+const QueryChart: FC<QueryChartProps> = ({
+    exploreName,
+    dimensions,
+    metrics,
+    filters,
+    sorts,
+    limit,
+    chartType,
+    dataOptions,
+    onSelect,
+    ...pieceProps
+}) => {
+    const { token: tokenOrTokenPromise, instanceUrl } =
+        useSdkConnection(pieceProps);
+    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+    const query = useMetricQuery(
+        {
+            instanceUrl,
+            projectUuid: tokenContext?.projectUuid,
+            auth: tokenContext
+                ? { type: 'embedToken', token: tokenContext.token }
+                : undefined,
+        },
+        { exploreName, dimensions, metrics, filters, sorts, limit },
+        { enabled: !!tokenContext },
+    );
+    if (query.error) {
+        return (
+            <p role="alert" style={{ margin: 0 }}>
+                {query.error.message}
+            </p>
+        );
+    }
+    return (
+        <DataChart
+            {...pieceProps}
+            rows={query.data?.rows ?? []}
+            columns={query.data?.columns}
+            isLoading={pieceProps.isLoading || !query.data}
+            chartType={chartType}
+            dataOptions={dataOptions}
+            onSelect={onSelect}
+        />
+    );
+};
+
 type WidgetBaseProps = Omit<WidgetFrameProps, 'children'>;
 
 type ChartWidgetProps = WidgetBaseProps & ChartProps;
 type DataChartWidgetProps = WidgetBaseProps & DataChartProps;
+type QueryChartWidgetProps = WidgetBaseProps & QueryChartProps;
 
 const splitWidgetProps = <T extends WidgetBaseProps>({
     title,
@@ -1808,6 +1870,16 @@ const DataChartWidget: FC<DataChartWidgetProps> = (props) => {
     );
 };
 
+/** A chart that runs its own query, in a titled frame. */
+const QueryChartWidget: FC<QueryChartWidgetProps> = (props) => {
+    const { frame, rest } = splitWidgetProps(props);
+    return (
+        <WidgetFrame {...frame}>
+            <QueryChart {...rest} />
+        </WidgetFrame>
+    );
+};
+
 type PivotTableWidgetProps = WidgetBaseProps & DataPivotTableProps;
 
 /** A pivot table from host rows, in a titled frame. */
@@ -1831,6 +1903,7 @@ type CustomWidgetFrameProps = WidgetBaseProps &
 type WidgetProps =
     | ({ widgetType: 'chart' } & ChartWidgetProps)
     | ({ widgetType: 'dataChart' } & DataChartWidgetProps)
+    | ({ widgetType: 'queryChart' } & QueryChartWidgetProps)
     | ({ widgetType: 'pivot' } & PivotTableWidgetProps)
     | ({ widgetType: 'custom' } & CustomWidgetFrameProps);
 
@@ -1848,6 +1921,10 @@ const Widget: FC<WidgetProps> = (props) => {
         case 'dataChart': {
             const { widgetType: _dataChart, ...dataChartProps } = props;
             return <DataChartWidget {...dataChartProps} />;
+        }
+        case 'queryChart': {
+            const { widgetType: _queryChart, ...queryChartProps } = props;
+            return <QueryChartWidget {...queryChartProps} />;
         }
         case 'pivot': {
             const { widgetType: _pivot, ...pivotProps } = props;
@@ -2067,6 +2144,8 @@ const Lightdash = {
     Widget,
     ChartWidget,
     DataChartWidget,
+    QueryChart,
+    QueryChartWidget,
     PivotTableWidget,
     WidgetFrame,
     CustomWidgetsProvider,
@@ -2154,6 +2233,8 @@ export {
     Widget,
     ChartWidget,
     DataChartWidget,
+    QueryChart,
+    QueryChartWidget,
     PivotTableWidget,
     WidgetFrame,
     CustomWidgetsProvider,
@@ -2234,9 +2315,13 @@ export type {
     ContextMenuSection,
     ChartWidgetProps,
     DataChartWidgetProps,
+    QueryChartProps,
+    QueryChartWidgetProps,
     PivotTableWidgetProps,
     WidgetProps,
     ChartModelQueryParams,
+    ChartModelQueryChartProps,
+    ChartModelQueryChartWidgetProps,
     ChartModelDataChartProps,
     ChartModelDataTableProps,
     ChartModelDataPivotTableProps,

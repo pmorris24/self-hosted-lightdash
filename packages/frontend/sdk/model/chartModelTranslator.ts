@@ -51,6 +51,15 @@ export type ChartModelWidgetProps =
     | ({ widgetType: 'dataChart' } & ChartModelDataChartWidgetProps)
     | ({ widgetType: 'pivot' } & ChartModelPivotTableWidgetProps);
 
+// Props for `QueryChart`, from the model alone: the chart runs the query.
+export type ChartModelQueryChartProps = ChartModelQueryParams & {
+    chartType: DataChartType;
+    dataOptions: DataOptions;
+};
+
+export type ChartModelQueryChartWidgetProps = ChartModelFrameProps &
+    ChartModelQueryChartProps;
+
 const CHART_KIND_TO_DATA_CHART_TYPE: Record<string, DataChartType> = {
     line: 'line',
     horizontal_bar: 'bar',
@@ -109,18 +118,11 @@ const resolveDimensions = (
     return chart.dimensions.filter((name) => present.has(name));
 };
 
-/**
- * The `dataOptions` of the saved chart: its first dimension on the category
- * axis, its measures as values, a second dimension as `breakBy`. A map needs
- * `latitude` and `longitude` from the host.
- */
-export const toDataOptions = (
-    chart: LightdashChartModel,
-    columns: DataColumn[],
+const buildDataOptions = (
+    chartType: DataChartType | null,
+    dimensions: string[],
+    measures: string[],
 ): DataOptions => {
-    const dimensions = resolveDimensions(chart, columns);
-    const measures = resolveMeasures(chart, columns);
-    const chartType = toDataChartType(chart.chartKind);
     const [category, second] = dimensions;
 
     switch (chartType) {
@@ -149,6 +151,45 @@ export const toDataOptions = (
         default:
             return { category, value: measures };
     }
+};
+
+/**
+ * The `dataOptions` of the saved chart: its first dimension on the category
+ * axis, its measures as values, a second dimension as `breakBy`. A map needs
+ * `latitude` and `longitude` from the host.
+ */
+export const toDataOptions = (
+    chart: LightdashChartModel,
+    columns: DataColumn[],
+): DataOptions =>
+    buildDataOptions(
+        toDataChartType(chart.chartKind),
+        resolveDimensions(chart, columns),
+        resolveMeasures(chart, columns),
+    );
+
+/**
+ * Props for `QueryChart`, from the model alone: the saved query and the
+ * saved look. The chart runs the query itself, so no rows are needed. A
+ * table chart draws as columns unless `chartType` overrides it.
+ */
+export const toQueryChartProps = (
+    chart: LightdashChartModel,
+    overrides: Partial<ChartModelQueryChartProps> = {},
+): ChartModelQueryChartProps => {
+    const { chartType: chartTypeOverride, dataOptions, ...queryOverrides } =
+        overrides;
+    const savedType = toDataChartType(chart.chartKind);
+    return {
+        ...toMetricQueryParams(chart, queryOverrides),
+        chartType: chartTypeOverride ?? savedType ?? 'column',
+        dataOptions:
+            dataOptions ??
+            buildDataOptions(savedType, chart.dimensions, [
+                ...chart.metrics,
+                ...chart.tableCalculations,
+            ]),
+    };
 };
 
 /** Props for `DataChart`: the saved chart's look, drawn from the result rows. */
@@ -208,6 +249,15 @@ export const toDataChartWidgetProps = (
     ...toDataChartProps(chart, result),
 });
 
+/** Props for `QueryChartWidget`: the query chart in a frame titled with its name. */
+export const toQueryChartWidgetProps = (
+    chart: LightdashChartModel,
+    overrides: Partial<ChartModelQueryChartProps> = {},
+): ChartModelQueryChartWidgetProps => ({
+    ...toFrameProps(chart),
+    ...toQueryChartProps(chart, overrides),
+});
+
 /**
  * Props for `Widget`: a pivot widget for a table chart with two or more
  * dimensions, otherwise a data chart widget.
@@ -237,5 +287,7 @@ export const chartModelTranslator = {
     toDataTableProps,
     toDataPivotTableProps,
     toDataChartWidgetProps,
+    toQueryChartProps,
+    toQueryChartWidgetProps,
     toWidgetProps,
 };
