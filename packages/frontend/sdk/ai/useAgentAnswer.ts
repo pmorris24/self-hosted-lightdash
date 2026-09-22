@@ -3,6 +3,7 @@ import {
     createLightdashApiClient,
     type LightdashApiClientConfig,
 } from '../api';
+import { useResolvedConfig } from '../connection';
 import { askAgent, type AgentAnswer } from './agentApi';
 
 export type UseAgentAnswerResult = {
@@ -20,9 +21,10 @@ export type UseAgentAnswerResult = {
  * embed token signed for that agent. Each `ask` makes a new thread.
  */
 export const useAgentAnswer = (
-    config: LightdashApiClientConfig,
     args: { agentUuid: string; projectUuid?: string },
+    options: { config?: LightdashApiClientConfig } = {},
 ): UseAgentAnswerResult => {
+    const config = useResolvedConfig(options.config);
     const [state, setState] = useState<
         Pick<UseAgentAnswerResult, 'answer' | 'partialText' | 'isLoading' | 'error'>
     >({ answer: null, partialText: '', isLoading: false, error: null });

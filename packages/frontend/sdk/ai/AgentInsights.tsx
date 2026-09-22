@@ -3,7 +3,8 @@ import { type LightdashApiClientConfig } from '../api';
 import { useAgentAnswer } from './useAgentAnswer';
 
 type Props = {
-    config: LightdashApiClientConfig;
+    // The connection to ask through. Default: the page's `Lightdash.Provider`.
+    config?: LightdashApiClientConfig;
     agentUuid: string;
     // The question to answer, for example "Summarise revenue by region".
     prompt: string;
@@ -22,9 +23,10 @@ export const AgentInsights: FC<Props> = ({
     style,
     loadingText = 'Writing…',
 }) => {
-    const { ask, partialText, isLoading, error } = useAgentAnswer(config, {
-        agentUuid,
-    });
+    const { ask, partialText, isLoading, error } = useAgentAnswer(
+        { agentUuid },
+        { config },
+    );
 
     // A request to a server: the one kind of work an effect is for.
     useEffect(() => {

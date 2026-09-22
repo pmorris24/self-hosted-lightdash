@@ -3,6 +3,7 @@ import {
     createLightdashApiClient,
     type LightdashApiClientConfig,
 } from '../api';
+import { useResolvedConfig } from '../connection';
 import { useLightdashApiQuery, type UseLightdashApiResult } from '../hooks';
 
 type SuggestionChips = { chips: { kind: string; label: string }[] };
@@ -12,9 +13,10 @@ type SuggestionChips = { chips: { kind: string; label: string }[] };
  * embed token today, so `fallback` is what a viewer sees until it does.
  */
 export const useAgentSuggestions = (
-    config: LightdashApiClientConfig,
     args: { agentUuid: string; projectUuid?: string; fallback?: string[] },
+    options: { config?: LightdashApiClientConfig } = {},
 ): UseLightdashApiResult<string[]> => {
+    const config = useResolvedConfig(options.config);
     const projectUuid = args.projectUuid ?? config.projectUuid;
     const { agentUuid, fallback } = args;
     const fallbackKey = (fallback ?? []).join('\u0000');
