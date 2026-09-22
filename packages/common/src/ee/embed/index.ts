@@ -312,18 +312,42 @@ export type EmbedJwtContentProject = Omit<CommonEmbedJwtContent, 'type'> & {
     type: 'project';
 };
 
+/**
+ * The rights a page may keep when it exchanges a project token. Spelled out
+ * rather than derived from the zod schema because TSOA cannot read
+ * `z.infer` types in a request body.
+ */
+export type EmbedContentTokenRights = {
+    dashboardFiltersInteractivity?: {
+        enabled: boolean | FilterInteractivityValues;
+        allowedFilters?: string[] | null;
+        hidden?: boolean;
+        canAddFilters?: boolean;
+    };
+    parameterInteractivity?: { enabled: boolean };
+    canExportCsv?: boolean;
+    canExportDashboardCsv?: boolean;
+    canExportImages?: boolean;
+    canExportPagePdf?: boolean;
+    canDateZoom?: boolean;
+    canExplore?: boolean;
+    canViewUnderlyingData?: boolean;
+    canViewDataApps?: boolean;
+    stickyHeader?: boolean;
+};
+
 /** What a project token asks to be exchanged for. */
 export type EmbedContentTokenRequest =
     | {
           type: 'dashboard';
           dashboardUuid: string;
           // Rights to keep, out of those the project token grants.
-          rights?: InteractivityOptions;
+          rights?: EmbedContentTokenRights;
       }
     | {
           type: 'chart';
           savedChartUuid: string;
-          rights?: InteractivityOptions;
+          rights?: EmbedContentTokenRights;
       };
 
 export type EmbedContentToken = {
