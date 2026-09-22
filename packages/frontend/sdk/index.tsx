@@ -91,6 +91,7 @@ import { createDefaultLayout } from './composed/layout';
 import { resolveColumns } from './data/adapter';
 import {
     buildChartConfig,
+    buildTableConfig,
     getDimensionColumns,
     getValueColumns,
     orderColumnsForChart,
@@ -101,6 +102,7 @@ import {
     type DataChartSelection,
     type DataChartStyleOptions,
     type DataChartType,
+    type DataTableOptions,
     type DataColumn,
     type DataFormatter,
     type DataOptions,
@@ -1639,22 +1641,43 @@ const RowsDataChart: FC<RowsDataChartProps> = ({
 
 const TABLE_CHART_CONFIG: ChartConfig = { type: ChartType.TABLE, config: {} };
 
-type DataTableProps = DataPieceProps & {
+type DataTableCommonProps = FilterPieceProps & {
+    format?: DataFormatter;
+    isLoading?: boolean;
+    colorPalette?: string[];
     // Columns to align and format as measures. Default: every number column.
     valueColumns?: string[];
+    // How the table reads: totals, subtotals, row numbers and the rest.
+    tableOptions?: DataTableOptions;
 };
 
+type RowsDataTableProps = DataTableCommonProps & {
+    rows: DataRow[];
+    columns?: DataColumn[];
+};
+
+/** A table that runs its own governed query. */
+type QueryDataTableProps = DataTableCommonProps & ChartModelQueryParams;
+
+type DataTableProps = RowsDataTableProps | QueryDataTableProps;
+
 /** A table from rows that host code supplies. */
-const DataTable: FC<DataTableProps> = ({
+const RowsDataTable: FC<RowsDataTableProps> = ({
     rows,
     columns,
     format,
     isLoading,
     colorPalette,
     valueColumns,
+    tableOptions,
     ...pieceProps
 }) => {
     const { palette: themePalette } = useLightdashTheme();
+    const optionsKey = JSON.stringify(tableOptions ?? null);
+    const tableConfig = useMemo(
+        () => buildTableConfig(tableOptions),
+        [optionsKey], // eslint-disable-line react-hooks/exhaustive-deps
+    );
     const measures = useMemo(
         () =>
             valueColumns ??
@@ -1671,12 +1694,65 @@ const DataTable: FC<DataTableProps> = ({
                 format={format}
                 isLoading={isLoading}
                 colorPalette={colorPalette ?? themePalette}
-                chartConfig={TABLE_CHART_CONFIG}
+                chartConfig={tableConfig}
                 valueColumns={measures}
             />
         </FilterPiece>
     );
 };
+
+const QueryDataTable: FC<QueryDataTableProps> = ({
+    exploreName,
+    dimensions,
+    metrics,
+    filters,
+    sorts,
+    limit,
+    ...pieceProps
+}) => {
+    const { token: tokenOrTokenPromise, instanceUrl } =
+        useSdkConnection(pieceProps);
+    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+    const query = useMetricQuery(
+        { exploreName, dimensions, metrics, filters, sorts, limit },
+        {
+            enabled: !!tokenContext,
+            config: {
+                instanceUrl,
+                projectUuid: tokenContext?.projectUuid,
+                auth: tokenContext
+                    ? { type: 'embedToken', token: tokenContext.token }
+                    : undefined,
+            },
+        },
+    );
+    if (query.error) {
+        return (
+            <p role="alert" style={{ margin: 0 }}>
+                {query.error.message}
+            </p>
+        );
+    }
+    return (
+        <RowsDataTable
+            {...pieceProps}
+            rows={query.data?.rows ?? []}
+            columns={query.data?.columns}
+            isLoading={pieceProps.isLoading || !query.data}
+        />
+    );
+};
+
+/**
+ * A table from either input: a governed query the table runs itself, or rows
+ * the host already has.
+ */
+const DataTable: FC<DataTableProps> = (props) =>
+    'exploreName' in props ? (
+        <QueryDataTable {...props} />
+    ) : (
+        <RowsDataTable {...props} />
+    );
 
 type DataPivotTableProps = DataPieceProps & {
     // Columns that stay as row headers.
@@ -2369,6 +2445,7 @@ export type {
     ChartModelQueryParams,
     ChartModelChartProps,
     DataChartStyleOptions,
+    DataTableOptions,
     LightdashQueryFilter,
     LightdashSimpleFilter,
     LightdashFilterRule,

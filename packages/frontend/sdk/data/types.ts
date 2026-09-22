@@ -124,6 +124,22 @@ export type DataChartStyleOptions = {
     axisTitleFontSize?: number;
 };
 
+/**
+ * How a table reads, separate from what is in it. Every field is optional
+ * and falls back to the renderer's own default.
+ */
+export type DataTableOptions = {
+    // The counter down the left. Default: shown.
+    rowNumbers?: boolean;
+    // Print a repeated dimension value once, not on every row.
+    groupRepeatedValues?: boolean;
+    // The row count, above the table.
+    resultsCount?: boolean;
+};
+// Totals, subtotals and metrics-as-rows are deliberately absent: the renderer
+// computes them from the aggregation of a saved chart's metric query, which
+// rows handed to it by a host page do not carry, so they render empty.
+
 // What a host page receives when a viewer clicks a data point.
 export type DataChartSelection = {
     // The clicked row, keyed by column name.

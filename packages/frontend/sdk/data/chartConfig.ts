@@ -13,6 +13,7 @@ import {
     type DataChartStyleOptions,
     type DataChartType,
     type DataOptions,
+    type DataTableOptions,
 } from './types';
 
 /** The category column first, where the renderer reads labels by position. */
@@ -379,3 +380,19 @@ export const buildChartConfig = (
             );
     }
 };
+
+/** Table options to the table config the Lightdash renderer reads. */
+export const buildTableConfig = (options: DataTableOptions = {}): ChartConfig => ({
+    type: ChartType.TABLE,
+    config: {
+        ...(options.rowNumbers === undefined
+            ? {}
+            : { hideRowNumbers: !options.rowNumbers }),
+        ...(options.groupRepeatedValues === undefined
+            ? {}
+            : { showRowGrouping: options.groupRepeatedValues }),
+        ...(options.resultsCount === undefined
+            ? {}
+            : { showResultsTotal: options.resultsCount }),
+    },
+});

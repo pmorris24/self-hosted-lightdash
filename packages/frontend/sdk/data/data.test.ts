@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveColumns, toItemsMap, toResultRows } from './adapter';
 import {
     buildChartConfig,
+    buildTableConfig,
     getDimensionColumns,
     getValueColumns,
     orderColumnsForChart,
@@ -443,6 +444,29 @@ describe('buildChartConfig chart variants', () => {
         expect(revenue.yAxisIndex).toBeUndefined();
         expect(orders.yAxisIndex).toBe(1);
         expect(config.config.eChartsConfig.yAxis).toHaveLength(2);
+    });
+});
+
+describe('buildTableConfig', () => {
+    it('is empty when nothing is asked for', () => {
+        expect(buildTableConfig()).toEqual({ type: ChartType.TABLE, config: {} });
+    });
+
+    it('maps the table options onto the renderer, including the inverted one', () => {
+        expect(
+            buildTableConfig({
+                rowNumbers: false,
+                groupRepeatedValues: true,
+                resultsCount: true,
+            }),
+        ).toEqual({
+            type: ChartType.TABLE,
+            config: {
+                hideRowNumbers: true,
+                showRowGrouping: true,
+                showResultsTotal: true,
+            },
+        });
     });
 });
 
