@@ -120,7 +120,12 @@ const resolveDimensions = (
     return chart.dimensions.filter((name) => present.has(name));
 };
 
-const buildDataOptions = (
+/**
+ * The data options a query draws with when the host sets none: the first
+ * dimension on the category axis, the measures as values, a second dimension
+ * as `breakBy`; the shape each chart type needs.
+ */
+export const defaultDataOptions = (
     chartType: DataChartType | null,
     dimensions: string[],
     measures: string[],
@@ -164,7 +169,7 @@ export const toDataOptions = (
     chart: LightdashChartModel,
     columns: DataColumn[],
 ): DataOptions =>
-    buildDataOptions(
+    defaultDataOptions(
         toDataChartType(chart.chartKind),
         resolveDimensions(chart, columns),
         resolveMeasures(chart, columns),
@@ -187,7 +192,7 @@ export const toQueryChartProps = (
         chartType: chartTypeOverride ?? savedType ?? 'column',
         dataOptions:
             dataOptions ??
-            buildDataOptions(savedType, chart.dimensions, [
+            defaultDataOptions(savedType, chart.dimensions, [
                 ...chart.metrics,
                 ...chart.tableCalculations,
             ]),

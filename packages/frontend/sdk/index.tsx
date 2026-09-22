@@ -178,6 +178,7 @@ import {
 import { dashboardModelToComposed } from './composed/model';
 import {
     chartModelTranslator,
+    defaultDataOptions,
     type ChartModelDataChartWidgetProps,
     type ChartModelDataChartProps,
     type ChartModelDataPivotTableProps,
@@ -1571,18 +1572,39 @@ type DataPieceProps = FilterPieceProps & {
     colorPalette?: string[];
 };
 
-type DataChartProps = DataPieceProps & {
+type DataChartCommonProps = FilterPieceProps & {
+    format?: DataFormatter;
+    isLoading?: boolean;
+    colorPalette?: string[];
     chartType: DataChartType;
-    dataOptions: DataOptions;
     // A viewer clicked a data point.
     onSelect?: (selection: DataChartSelection) => void;
 };
 
+/** A chart from rows the host supplies, from the query SDK or anywhere else. */
+type RowsDataChartProps = DataChartCommonProps & {
+    rows: DataRow[];
+    columns?: DataColumn[];
+    dataOptions: DataOptions;
+};
+
 /**
- * A chart from rows that host code supplies, drawn by the Lightdash renderer.
- * The rows can come from the query SDK or from anywhere else.
+ * A chart that runs its own governed query. The data options default from
+ * the query: the first dimension on the category axis, the metrics as values,
+ * a second dimension as `breakBy`.
  */
-const DataChart: FC<DataChartProps> = ({
+type QueryDataChartProps = DataChartCommonProps &
+    ChartModelQueryParams & {
+        dataOptions?: DataOptions;
+    };
+
+type DataChartProps = RowsDataChartProps | QueryDataChartProps;
+
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+    ? Omit<T, K>
+    : never;
+
+const RowsDataChart: FC<RowsDataChartProps> = ({
     rows: inputRows,
     columns: inputColumns,
     format,
@@ -1758,15 +1780,9 @@ const DataPivotTable: FC<DataPivotTableProps> = ({
     );
 };
 
-type TypedDataChartProps = Omit<DataChartProps, 'chartType'>;
+type TypedDataChartProps = DistributiveOmit<DataChartProps, 'chartType'>;
 
-type QueryChartProps = Omit<DataPieceProps, 'rows' | 'columns'> &
-    ChartModelQueryParams & {
-        chartType: DataChartType;
-        dataOptions: DataOptions;
-        // A viewer clicked a data point.
-        onSelect?: DataChartProps['onSelect'];
-    };
+type QueryChartProps = QueryDataChartProps;
 
 /**
  * A chart that runs its own governed query. The props are a query on one
@@ -1807,17 +1823,31 @@ const QueryChart: FC<QueryChartProps> = ({
         );
     }
     return (
-        <DataChart
+        <RowsDataChart
             {...pieceProps}
             rows={query.data?.rows ?? []}
             columns={query.data?.columns}
             isLoading={pieceProps.isLoading || !query.data}
             chartType={chartType}
-            dataOptions={dataOptions}
+            dataOptions={
+                dataOptions ?? defaultDataOptions(chartType, dimensions, metrics)
+            }
             onSelect={onSelect}
         />
     );
 };
+
+/**
+ * One chart component for both inputs: a governed query (`exploreName`,
+ * `dimensions`, `metrics`) that the chart runs itself, or `rows` the host
+ * already has. Drawn by the Lightdash renderer either way.
+ */
+const DataChart: FC<DataChartProps> = (props) =>
+    'exploreName' in props ? (
+        <QueryChart {...props} />
+    ) : (
+        <RowsDataChart {...props} />
+    );
 
 type WidgetBaseProps = Omit<WidgetFrameProps, 'children'>;
 
@@ -1870,15 +1900,23 @@ const ChartWidget: FC<ChartWidgetProps> = (props) => {
     );
 };
 
-/** A chart from host rows, in a titled frame. */
-const DataChartWidget: FC<DataChartWidgetProps> = (props) => {
-    const { frame, rest } = splitWidgetProps(props);
-    return (
-        <WidgetFrame {...frame}>
-            <DataChart {...rest} />
-        </WidgetFrame>
-    );
-};
+/** A chart from a query or from host rows, in a titled frame. */
+const DataChartWidget: FC<DataChartWidgetProps> = ({
+    title,
+    description,
+    styleOptions,
+    height,
+    ...rest
+}) => (
+    <WidgetFrame
+        title={title}
+        description={description}
+        styleOptions={styleOptions}
+        height={height}
+    >
+        <DataChart {...rest} />
+    </WidgetFrame>
+);
 
 /** A chart that runs its own query, in a titled frame. */
 const QueryChartWidget: FC<QueryChartWidgetProps> = (props) => {
