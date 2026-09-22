@@ -90,6 +90,8 @@ export const toMetricQueryParams = (
     exploreName: chart.exploreName,
     dimensions: chart.dimensions,
     metrics: chart.metrics,
+    filters: chart.filters,
+    sorts: chart.sorts,
     limit: chart.limit,
     ...overrides,
 });

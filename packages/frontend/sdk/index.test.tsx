@@ -1157,6 +1157,8 @@ describe('SDK API client with a project token', () => {
                             dimensions: [],
                             metrics: [],
                             tableCalculations: [],
+                            filters: {},
+                            sorts: [],
                             limit: 500,
                         },
                         chartConfig: { type: 'table', config: {} },

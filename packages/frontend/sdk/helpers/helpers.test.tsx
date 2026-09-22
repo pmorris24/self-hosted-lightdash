@@ -156,6 +156,8 @@ describe('extractFields', () => {
                 metrics: ['orders_total'],
                 tableCalculations: ['share'],
                 limit: 500,
+                sorts: [],
+                filters: [],
             }),
         ).toEqual({
             exploreName: 'orders',

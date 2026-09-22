@@ -8,6 +8,11 @@ import {
     type InteractivityOptions,
     type SavedChart,
 } from '@lightdash/common';
+import {
+    fromApiFilters,
+    toApiFilters,
+    type LightdashQueryFilter,
+} from './model/queryFilters';
 
 export type LightdashSdkContentType =
     | 'chart'
@@ -61,12 +66,18 @@ export type LightdashExploreField = {
     type: string;
 };
 
-export type LightdashQueryFilter = {
-    // A field id, for example `orders_status`.
-    field: string;
-    operator: 'equals' | 'notEquals';
-    value: string | number | boolean | null;
-};
+export type {
+    LightdashDateFilterSettings,
+    LightdashFilterGroup,
+    LightdashFilterOperator,
+    LightdashFilterRule,
+    LightdashFilterValue,
+    LightdashQueryFilter,
+    LightdashSimpleFilter,
+    LightdashUnitOfTime,
+} from './model/queryFilters';
+
+export type LightdashQuerySort = { field: string; descending: boolean };
 
 export type RunMetricQueryOptions = {
     exploreName: string;
@@ -111,6 +122,9 @@ export type LightdashChartModel = {
     metrics: string[];
     tableCalculations: string[];
     limit: number;
+    sorts: LightdashQuerySort[];
+    // The saved filters, as the filters a query accepts.
+    filters: LightdashQueryFilter[];
 };
 
 export type LightdashChartFields = {
@@ -644,6 +658,11 @@ export const createLightdashApiClient = (config: LightdashApiClientConfig) => {
                 (calculation) => calculation.name,
             ),
             limit: chart.metricQuery.limit,
+            sorts: chart.metricQuery.sorts.map((sort) => ({
+                field: sort.fieldId,
+                descending: sort.descending,
+            })),
+            filters: fromApiFilters(chart.metricQuery.filters),
         };
     };
 
@@ -662,20 +681,7 @@ export const createLightdashApiClient = (config: LightdashApiClientConfig) => {
             );
         }
 
-        const filterRules = (options.filters ?? []).map((filter, index) => ({
-            id: `sdk-query-filter-${index}`,
-            target: { fieldId: filter.field },
-            operator:
-                filter.value === null
-                    ? filter.operator === 'equals'
-                        ? 'isNull'
-                        : 'notNull'
-                    : filter.operator,
-            values: filter.value === null ? [] : [filter.value],
-        }));
-        const metricIds = new Set(options.metrics);
-        const toGroup = (rules: typeof filterRules, id: string) =>
-            rules.length > 0 ? { id, and: rules } : undefined;
+        const filters = toApiFilters(options.filters ?? [], options.metrics);
 
         const { queryUuid } = await request<{ queryUuid: string }>({
             method: 'POST',
@@ -687,20 +693,7 @@ export const createLightdashApiClient = (config: LightdashApiClientConfig) => {
                     exploreName: options.exploreName,
                     dimensions: options.dimensions,
                     metrics: options.metrics,
-                    filters: {
-                        dimensions: toGroup(
-                            filterRules.filter(
-                                (rule) => !metricIds.has(rule.target.fieldId),
-                            ),
-                            'sdk-query-dimensions',
-                        ),
-                        metrics: toGroup(
-                            filterRules.filter((rule) =>
-                                metricIds.has(rule.target.fieldId),
-                            ),
-                            'sdk-query-metrics',
-                        ),
-                    },
+                    filters,
                     sorts: (options.sorts ?? []).map((sort) => ({
                         fieldId: sort.field,
                         descending: sort.descending ?? false,

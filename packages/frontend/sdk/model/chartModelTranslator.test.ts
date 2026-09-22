@@ -12,6 +12,8 @@ const chart: LightdashChartModel = {
     metrics: ['orders_revenue'],
     tableCalculations: ['orders_share'],
     limit: 500,
+    sorts: [{ field: 'orders_year', descending: true }],
+    filters: [{ field: 'orders_status', operator: 'notEquals', values: ['void'] }],
 };
 
 const result: LightdashQueryRows = {
@@ -44,6 +46,10 @@ describe('chartModelTranslator', () => {
             exploreName: 'orders',
             dimensions: ['orders_year', 'orders_status'],
             metrics: ['orders_revenue'],
+            filters: [
+                { field: 'orders_status', operator: 'notEquals', values: ['void'] },
+            ],
+            sorts: [{ field: 'orders_year', descending: true }],
             limit: 10,
         });
     });
@@ -135,6 +141,10 @@ describe('chartModelTranslator', () => {
             exploreName: 'orders',
             dimensions: ['orders_year', 'orders_status'],
             metrics: ['orders_revenue'],
+            filters: [
+                { field: 'orders_status', operator: 'notEquals', values: ['void'] },
+            ],
+            sorts: [{ field: 'orders_year', descending: true }],
             limit: 500,
             chartType: 'column',
             dataOptions: {

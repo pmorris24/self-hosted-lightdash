@@ -190,6 +190,16 @@ import {
 } from './model/chartModelTranslator';
 import { useComposedDashboard } from './composed/useComposedDashboard';
 import {
+    filterFactory,
+    type LightdashDateFilterSettings,
+    type LightdashFilterGroup,
+    type LightdashFilterOperator,
+    type LightdashFilterRule,
+    type LightdashFilterValue,
+    type LightdashSimpleFilter,
+    type LightdashUnitOfTime,
+} from './model/queryFilters';
+import {
     useDashboardModel,
     useExploreFields,
     useFieldValues,
@@ -2160,6 +2170,7 @@ const Lightdash = {
     useChartModel,
     useChartQuery,
     chartModelTranslator,
+    filterFactory,
     useLightdashQueryCache,
     useMetricQueryPivot,
     extractFields,
@@ -2249,6 +2260,7 @@ export {
     useChartModel,
     useChartQuery,
     chartModelTranslator,
+    filterFactory,
     useLightdashQueryCache,
     useMetricQueryPivot,
     extractFields,
@@ -2321,6 +2333,14 @@ export type {
     WidgetProps,
     ChartModelQueryParams,
     ChartModelQueryChartProps,
+    LightdashQueryFilter,
+    LightdashSimpleFilter,
+    LightdashFilterRule,
+    LightdashFilterGroup,
+    LightdashFilterOperator,
+    LightdashFilterValue,
+    LightdashUnitOfTime,
+    LightdashDateFilterSettings,
     ChartModelQueryChartWidgetProps,
     ChartModelDataChartProps,
     ChartModelDataTableProps,
