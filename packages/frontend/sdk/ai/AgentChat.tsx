@@ -6,6 +6,10 @@ import { PendingPromptProvider } from '../../src/ee/features/aiCopilot/component
 import { setEmbeddedAiAgentMode } from '../../src/ee/features/aiCopilot/hooks/aiAgentRouting';
 import { createAiAgentStore } from '../../src/ee/features/aiCopilot/store';
 import { openPanel } from '../../src/ee/features/aiCopilot/store/aiAgentLauncherSlice';
+import {
+    type AgentThreadChange,
+    useReportedThread,
+} from './useReportedThread';
 import { useAiAgentStoreSelector } from '../../src/ee/features/aiCopilot/store/hooks';
 import { AiAgentThreadStreamAbortControllerContextProvider } from '../../src/ee/features/aiCopilot/streaming/AiAgentThreadStreamAbortControllerContextProvider';
 import { embedContractClass } from '../../src/ee/features/embed/styles/embedClassContract';
@@ -29,47 +33,28 @@ const THREAD_PATH = /\/threads\/([^/?#]+)/;
  * the router is the host page's own, so we read it from the route.
  */
 const ThreadWatcher: FC<{
-    onThreadChange: (options: { threadUuid: string }) => void;
+    onThreadChange: AgentThreadChange;
 }> = ({ onThreadChange }) => {
     const { pathname } = useLocation();
-    const reportedRef = useRef<string | null>(null);
-    const callbackRef = useRef(onThreadChange);
-    callbackRef.current = onThreadChange;
-
-    useEffect(() => {
-        const threadUuid = THREAD_PATH.exec(pathname)?.[1];
-        if (!threadUuid || reportedRef.current === threadUuid) return;
-        reportedRef.current = threadUuid;
-        callbackRef.current({ threadUuid });
-    }, [pathname]);
-
+    useReportedThread(THREAD_PATH.exec(pathname)?.[1], onThreadChange);
     return null;
 };
 
 export type AgentLayout = 'panel' | 'page';
 
 const PanelThreadWatcher: FC<{
-    onThreadChange: (options: { threadUuid: string }) => void;
+    onThreadChange: AgentThreadChange;
 }> = ({ onThreadChange }) => {
     const threadUuid = useAiAgentStoreSelector(
         (state) => state.aiAgentLauncher.activeThreadId,
     );
-    const reportedRef = useRef<string | null>(null);
-    const callbackRef = useRef(onThreadChange);
-    callbackRef.current = onThreadChange;
-
-    useEffect(() => {
-        if (!threadUuid || reportedRef.current === threadUuid) return;
-        reportedRef.current = threadUuid;
-        callbackRef.current({ threadUuid });
-    }, [threadUuid]);
-
+    useReportedThread(threadUuid, onThreadChange);
     return null;
 };
 
 type Props = {
     styleOptions?: AgentThemeSettings;
-    onThreadChange?: (options: { threadUuid: string }) => void;
+    onThreadChange?: AgentThreadChange;
     layout: AgentLayout;
     projectUuid: string;
     agentUuid: string;

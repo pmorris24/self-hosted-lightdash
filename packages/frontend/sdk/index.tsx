@@ -15,7 +15,11 @@ import {
     type EmbedDashboard as EmbedDashboardType,
     type LanguageMap,
     type SavedChart,
+    type AiAgentFeatureSetting,
+    type AiAgentFeatures,
+    resolveAiAgentFeatures,
     type SdkAgentFeatures,
+    toSdkAgentFeatures,
     type SdkUiOverrides,
     type UiStringKey,
 } from '@lightdash/common';
@@ -71,6 +75,10 @@ import {
     type AgentFramedChartProps,
 } from './ai/agentChartTranslator';
 import { AgentChat, type AgentLayout } from './ai/AgentChat';
+import {
+    type AiAgentSurface,
+    resolveAgentLayout,
+} from './ai/agentSurface';
 import { AgentInsights } from './ai/AgentInsights';
 import { agentRoute } from './ai/agentRoute';
 import {
@@ -327,7 +335,12 @@ type AiAgentProps = Omit<
 > &
     ConnectionProps & {
         agentUuid: string;
-        onThreadChange?: (options: { threadUuid: string }) => void;
+        /**
+         * The thread the conversation is in. `null` means the viewer asked for
+         * a new one and nothing has been sent yet, so a host holding this in
+         * state can start a fresh conversation without losing the old id.
+         */
+        onThreadChange?: (options: { threadUuid: string | null }) => void;
         threadUuid?: string;
         /** Initial prompt chips for inline embeds when the API has no suggestions. */
         suggestedQuestions?: string[];
@@ -346,6 +359,15 @@ type AiAgentProps = Omit<
          * renders the page.
          */
         layout?: AgentLayout;
+        /**
+         * Which agent surface to render. `panel` (the default) is the small
+         * panel that opens beside a dashboard. `page` is the full-page agent,
+         * with its suggested questions and its pickers. `workspace` is the
+         * whole native AI workspace, including thread navigation.
+         *
+         * This replaces `layout`, which stays for one deprecation period.
+         */
+        surface?: AiAgentSurface;
         // What the conversation looks like, over the `agent` section of the
         // surrounding theme. The iframe cannot take these.
         styleOptions?: AgentThemeSettings;
@@ -355,7 +377,7 @@ type AiAgentProps = Omit<
          * one it does not mention stays on, so an embed that says nothing gets
          * the agent as the product ships it. The iframe cannot take these.
          */
-        features?: SdkAgentFeatures;
+        features?: AiAgentFeatures;
         /**
          * Your own mark, shown wherever the agent shows its avatar — the empty
          * panel and the embedded header. It is called with the size in pixels the
@@ -1437,7 +1459,8 @@ const AiAgentInline: FC<AiAgentProps> = ({
     features,
     avatar,
     suggestedQuestions,
-    layout = 'panel',
+    layout,
+    surface,
     ...connectionProps
 }) => {
     const {
@@ -1467,14 +1490,16 @@ const AiAgentInline: FC<AiAgentProps> = ({
             <EmbedProvider
                 embedToken={tokenContext.token}
                 projectUuid={tokenContext.projectUuid}
-                agentFeatures={features}
+                agentFeatures={toSdkAgentFeatures(
+                    resolveAiAgentFeatures(features),
+                )}
                 agentAvatar={avatar}
                 agentSuggestedQuestions={suggestedQuestions}
             >
                 <AgentChat
                     styleOptions={styleOptions}
                     onThreadChange={onThreadChange}
-                    layout={layout}
+                    layout={resolveAgentLayout(surface, layout)}
                     projectUuid={tokenContext.projectUuid}
                     agentUuid={agentUuid}
                     threadUuid={threadUuid}
@@ -2581,6 +2606,9 @@ export type {
     AgentSurfaceProps,
     AgentThemeSettings,
     AgentTurnProps,
+    AiAgentFeatureSetting,
+    AiAgentFeatures,
+    AiAgentSurface,
     SdkAgentFeatures,
     UseAgentAnswerResult,
     UseAgentConversationResult,
