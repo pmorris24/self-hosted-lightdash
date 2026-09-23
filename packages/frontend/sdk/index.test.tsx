@@ -234,6 +234,8 @@ import {
     ThemeProvider,
     createLightdashApiClient,
     useContentToken,
+    useLightdashQueryCache,
+    useMetricQuery,
     type EmbedContentTokenRequest,
 } from './index';
 
@@ -1313,5 +1315,127 @@ describe('SDK API client with a project token', () => {
         await expect(client.getDashboard()).rejects.toThrow(
             'dashboardUuid is required',
         );
+    });
+});
+
+describe('SDK metric query cache', () => {
+    const encode = (payload: object) =>
+        `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(payload))
+            .replace(/=+$/, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')}.test`;
+    const projectToken = encode({
+        content: { type: 'project', projectUuid: 'project-1' },
+    });
+    const queryArgs = {
+        exploreName: 'orders',
+        dimensions: ['orders_status'],
+        metrics: ['orders_count'],
+    };
+
+    const rowsFetch = () =>
+        vi.fn(async (url: string) =>
+            String(url).includes('/metric-query')
+                ? new Response(
+                      JSON.stringify({
+                          status: 'ok',
+                          results: { queryUuid: 'query-1' },
+                      }),
+                      { status: 200 },
+                  )
+                : new Response(
+                      JSON.stringify({
+                          status: 'ok',
+                          results: {
+                              status: 'ready',
+                              columns: {},
+                              rows: [
+                                  {
+                                      orders_status: {
+                                          value: {
+                                              raw: 'completed',
+                                              formatted: 'completed',
+                                          },
+                                      },
+                                      orders_count: {
+                                          value: { raw: 7, formatted: '7' },
+                                      },
+                                  },
+                              ],
+                          },
+                      }),
+                      { status: 200 },
+                  ),
+        );
+
+    const Rows: React.FC<{ fetch: typeof globalThis.fetch }> = ({ fetch }) => {
+        const query = useMetricQuery(queryArgs, {
+            cache: true,
+            config: {
+                instanceUrl: 'http://localhost:3000',
+                projectUuid: 'project-1',
+                auth: { type: 'embedToken', token: projectToken },
+                fetch,
+            },
+        });
+        return (
+            <>
+                <div data-testid="rows">
+                    {query.data?.rows.length ?? 'none'}
+                </div>
+                <button data-testid="refetch" onClick={query.refetch} />
+            </>
+        );
+    };
+
+    const Clear: React.FC = () => {
+        const cache = useLightdashQueryCache();
+        cache.clear();
+        return null;
+    };
+
+    const posts = (fetchMock: ReturnType<typeof rowsFetch>) =>
+        fetchMock.mock.calls.filter(([url]) =>
+            String(url).includes('/metric-query'),
+        ).length;
+
+    beforeEach(() => {
+        render(<Clear />).unmount();
+    });
+
+    it('draws rows this page already has instead of running the query again', async () => {
+        const fetchMock = rowsFetch();
+        const first = render(
+            <Rows fetch={fetchMock as unknown as typeof globalThis.fetch} />,
+        );
+        await waitFor(() =>
+            expect(screen.getByTestId('rows')).toHaveTextContent('1'),
+        );
+        expect(posts(fetchMock)).toBe(1);
+        first.unmount();
+
+        render(
+            <Rows fetch={fetchMock as unknown as typeof globalThis.fetch} />,
+        );
+        // On the first frame, with no wait: the remount never shows an empty chart.
+        expect(screen.getByTestId('rows')).toHaveTextContent('1');
+        await waitFor(() =>
+            expect(screen.getByTestId('rows')).toHaveTextContent('1'),
+        );
+        expect(posts(fetchMock)).toBe(1);
+    });
+
+    it('refetch runs the query again', async () => {
+        const fetchMock = rowsFetch();
+        render(
+            <Rows fetch={fetchMock as unknown as typeof globalThis.fetch} />,
+        );
+        await waitFor(() =>
+            expect(screen.getByTestId('rows')).toHaveTextContent('1'),
+        );
+        expect(posts(fetchMock)).toBe(1);
+
+        fireEvent.click(screen.getByTestId('refetch'));
+        await waitFor(() => expect(posts(fetchMock)).toBe(2));
     });
 });

@@ -61,9 +61,12 @@ const toError = (error: unknown) => {
 export const useLightdashApiQuery = <T,>(
     key: string,
     enabled: boolean,
-    load: (signal: AbortSignal) => Promise<T>,
+    // `isForced` is true for the run a `refetch()` caused, so a loader that
+    // reads a cache knows to go to the network instead.
+    load: (signal: AbortSignal, isForced: boolean) => Promise<T>,
 ): UseLightdashApiResult<T> => {
     const [fetchCount, setFetchCount] = useState(0);
+    const forcedRef = useRef(false);
     const [state, setState] = useState<UseLightdashApiState<T>>({
         data: null,
         error: null,
@@ -90,7 +93,11 @@ export const useLightdashApiQuery = <T,>(
             isLoading: true,
         }));
 
-        loadRef.current(abortController.signal)
+        const isForced = forcedRef.current;
+        forcedRef.current = false;
+
+        loadRef
+            .current(abortController.signal, isForced)
             .then((data) => {
                 if (abortController.signal.aborted) return;
                 setState({ data, error: null, isLoading: false });
@@ -108,6 +115,7 @@ export const useLightdashApiQuery = <T,>(
     }, [enabled, fetchCount, key]);
 
     const refetch = useCallback(() => {
+        forcedRef.current = true;
         setFetchCount((current) => current + 1);
     }, []);
 
@@ -243,16 +251,24 @@ export const useChartModel = (
 // Results of `useMetricQuery({ cache: true })`, newest last. The key holds the
 // token, so one viewer never reads the rows of another.
 const QUERY_CACHE_MAX_ENTRIES = 50;
-const queryCache = new Map<string, LightdashQueryRows>();
+// A result this new is used as it is: a component that mounts again within the
+// window, because a page remounted it or because a second piece asks the same
+// question, reads rows instead of running the query again.
+const QUERY_CACHE_FRESH_MS = 30_000;
+type CachedQuery = { result: LightdashQueryRows; at: number };
+const queryCache = new Map<string, CachedQuery>();
 
 const rememberQuery = (key: string, result: LightdashQueryRows) => {
     queryCache.delete(key);
-    queryCache.set(key, result);
+    queryCache.set(key, { result, at: Date.now() });
     if (queryCache.size > QUERY_CACHE_MAX_ENTRIES) {
         const oldest = queryCache.keys().next();
         if (!oldest.done) queryCache.delete(oldest.value);
     }
 };
+
+const isFresh = (entry: CachedQuery) =>
+    Date.now() - entry.at < QUERY_CACHE_FRESH_MS;
 
 /** Control of the result cache that `useMetricQuery` fills. */
 export const useLightdashQueryCache = () =>
@@ -290,20 +306,28 @@ export const useMetricQuery = (
         args.dimensions.length + args.metrics.length > 0 &&
         !!(args.projectUuid ?? config.projectUuid);
 
-    return useLightdashApiQuery(
+    const result = useLightdashApiQuery(
         key,
         enabled,
         useCallback(
-            async (signal: AbortSignal) => {
+            async (signal: AbortSignal, isForced: boolean) => {
                 const cached = options.cache ? queryCache.get(key) : undefined;
-                if (cached) return cached;
-                const result = await client.runMetricQuery({ ...args, signal });
-                if (options.cache) rememberQuery(key, result);
-                return result;
+                if (cached && isFresh(cached) && !isForced)
+                    return cached.result;
+                const rows = await client.runMetricQuery({ ...args, signal });
+                if (options.cache) rememberQuery(key, rows);
+                return rows;
             },
             [argsKey, client, key, options.cache], // eslint-disable-line react-hooks/exhaustive-deps
         ),
     );
+
+    // Rows this page already has are drawn on the first frame, rather than a
+    // frame of nothing while the effect reaches the same cache a tick later.
+    // Older rows stand in while the query behind them runs again.
+    const cached = options.cache ? queryCache.get(key) : undefined;
+    if (result.data || result.error || !cached || !enabled) return result;
+    return { ...result, data: cached.result };
 };
 
 export type UseChartQueryArgs = {
@@ -340,7 +364,9 @@ export const useChartQuery = (
                 ? {
                       ...toMetricQueryParams(
                           chart.data,
-                          JSON.parse(overridesKey) as Partial<ChartModelQueryParams>,
+                          JSON.parse(
+                              overridesKey,
+                          ) as Partial<ChartModelQueryParams>,
                       ),
                       projectUuid,
                   }
@@ -452,8 +478,7 @@ export const useFieldValues = (
         args,
     ]);
     const enabled =
-        options.enabled !== false &&
-        !!(args.projectUuid ?? config.projectUuid);
+        options.enabled !== false && !!(args.projectUuid ?? config.projectUuid);
 
     return useLightdashApiQuery(
         key,

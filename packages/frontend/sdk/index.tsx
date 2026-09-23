@@ -1924,6 +1924,7 @@ const QueryDataTable: FC<QueryDataTableProps> = ({
         { exploreName, dimensions, metrics, filters, sorts, limit },
         {
             enabled: !!tokenContext,
+            cache: true,
             config: {
                 instanceUrl,
                 projectUuid: tokenContext?.projectUuid,
@@ -2035,6 +2036,7 @@ const QueryDataChart: FC<QueryDataChartProps> = ({
         { exploreName, dimensions, metrics, filters, sorts, limit },
         {
             enabled: !!tokenContext,
+            cache: true,
             config: {
                 instanceUrl,
                 projectUuid: tokenContext?.projectUuid,
@@ -2199,6 +2201,7 @@ const DrilldownChart: FC<DrilldownChartProps> = ({
         },
         {
             enabled: !!tokenContext,
+            cache: true,
             config: {
                 instanceUrl,
                 projectUuid: tokenContext?.projectUuid,
