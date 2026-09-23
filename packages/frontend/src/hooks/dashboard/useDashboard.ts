@@ -9,7 +9,6 @@ import {
     type DashboardAvailableFilters,
     type DashboardFilters,
     type DashboardHistory,
-    type DashboardTile,
     type DashboardVersion,
     type DateGranularity,
     type ExportContentFormat,
@@ -28,6 +27,10 @@ import {
 } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { lightdashApi } from '../../api';
+import {
+    placeNewTilesInFlow,
+    type PlaceableTile,
+} from '../../features/dashboardTabs/tileLayout';
 import { pollJobStatus } from '../../features/scheduler/hooks/useScheduler';
 import useApp from '../../providers/App/useApp';
 import useToaster from '../toaster/useToaster';
@@ -866,23 +869,12 @@ export const useDashboardVersionRollbackMutation = (
     );
 };
 
-export const appendNewTilesToBottom = <T extends Pick<DashboardTile, 'y'>>(
+// Named for where the tiles land: at the end of the dashboard, carrying on
+// from its bottom row rather than always starting a new one
+export const appendNewTilesToBottom = <T extends PlaceableTile>(
     existingTiles: T[] | undefined,
     newTiles: T[],
 ): T[] => {
-    const tilesY =
-        existingTiles &&
-        existingTiles.map(function (tile) {
-            return tile.y;
-        });
-    const maxY =
-        tilesY && tilesY.length > 0 ? Math.max.apply(Math, tilesY) : -1;
-    // `y` on a new tile is relative to the block being added, so a caller can
-    // lay several tiles out in rows and have the whole block land at the bottom
-    const reorderedTiles = newTiles.map((tile) => ({
-        ...tile,
-        y: maxY + 1 + tile.y,
-    }));
-
-    return [...(existingTiles ?? []), ...reorderedTiles];
+    const existing = existingTiles ?? [];
+    return [...existing, ...placeNewTilesInFlow(existing, newTiles)];
 };
