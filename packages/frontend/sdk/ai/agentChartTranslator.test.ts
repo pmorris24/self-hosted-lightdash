@@ -23,7 +23,9 @@ const artifact: AgentArtifact = {
                 exploreName: 'payments',
                 dimensions: ['payments_payment_method'],
                 metrics: ['payments_total_revenue'],
-                sorts: [{ fieldId: 'payments_total_revenue', descending: true }],
+                sorts: [
+                    { fieldId: 'payments_total_revenue', descending: true },
+                ],
                 limit: null,
             },
         },
@@ -76,13 +78,13 @@ describe('agentChartTranslator', () => {
         expect(props.dataOptions.breakBy).toBe('payments_status');
     });
 
-    it('titles a widget from what the agent wrote', () => {
-        const widget = agentChartTranslator.toChartWidgetProps(artifact);
-        expect(widget.title).toBe('Total Revenue by Payment Method');
-        expect(widget.description).toBe(
+    it('titles a frame from what the agent wrote', () => {
+        const framed = agentChartTranslator.toFramedChartProps(artifact);
+        expect(framed.frame.title).toBe('Total Revenue by Payment Method');
+        expect(framed.frame.description).toBe(
             'Sum of all payments broken down by payment method',
         );
-        expect(widget.exploreName).toBe('payments');
+        expect(framed.exploreName).toBe('payments');
     });
 
     it('says so when an artifact carries no chart', () => {

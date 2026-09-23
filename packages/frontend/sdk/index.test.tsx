@@ -231,6 +231,7 @@ import {
     Dashboard,
     MetricsCatalog,
     Provider,
+    ThemeProvider,
     createLightdashApiClient,
     useContentToken,
     type EmbedContentTokenRequest,
@@ -551,6 +552,7 @@ describe('SDK AI agent', () => {
                 token={mockToken}
                 instanceUrl={mockInstanceUrl}
                 agentUuid="test-agent-uuid"
+                render="iframe"
             />,
         );
 
@@ -570,6 +572,7 @@ describe('SDK AI agent', () => {
                 instanceUrl={mockInstanceUrl}
                 agentUuid="test-agent-uuid"
                 threadUuid="test-thread-uuid"
+                render="iframe"
             />,
         );
 
@@ -582,6 +585,89 @@ describe('SDK AI agent', () => {
         );
     });
 
+    it('renders the agent in the page, wearing the page’s style options', async () => {
+        const { container } = render(
+            <AiAgent
+                token={mockToken}
+                instanceUrl={mockInstanceUrl}
+                agentUuid="test-agent-uuid"
+                styleOptions={{
+                    accentColor: '#7262FF',
+                    borderRadius: 12,
+                    userMessages: { backgroundColor: '#F4F2FF' },
+                }}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(container.querySelector('.ld-agent-root')).toBeTruthy();
+        });
+
+        expect(container.querySelector('iframe')).toBeNull();
+        const scope = container.querySelector<HTMLElement>(
+            '.lightdash-agent-scope',
+        );
+        expect(
+            scope?.style.getPropertyValue('--lightdash-agent-accent-color'),
+        ).toBe('#7262FF');
+        expect(
+            scope?.style.getPropertyValue('--lightdash-agent-border-radius'),
+        ).toBe('12px');
+        expect(
+            scope?.style.getPropertyValue(
+                '--lightdash-agent-user-messages-background-color',
+            ),
+        ).toBe('#F4F2FF');
+    });
+
+    it('takes the theme\u2019s agent section, and lets the agent\u2019s own options win', async () => {
+        const { container } = render(
+            <ThemeProvider
+                theme={{
+                    agent: {
+                        accentColor: '#7262FF',
+                        userMessages: {
+                            backgroundColor: '#EEEEEE',
+                            textColor: '#111111',
+                        },
+                    },
+                }}
+            >
+                <AiAgent
+                    token={mockToken}
+                    instanceUrl={mockInstanceUrl}
+                    agentUuid="test-agent-uuid"
+                    styleOptions={{
+                        userMessages: { backgroundColor: '#F4F2FF' },
+                    }}
+                />
+            </ThemeProvider>,
+        );
+
+        await waitFor(() => {
+            expect(container.querySelector('.ld-agent-root')).toBeTruthy();
+        });
+
+        const scope = container.querySelector<HTMLElement>(
+            '.lightdash-agent-scope',
+        );
+        // From the theme.
+        expect(
+            scope?.style.getPropertyValue('--lightdash-agent-accent-color'),
+        ).toBe('#7262FF');
+        expect(
+            scope?.style.getPropertyValue(
+                '--lightdash-agent-user-messages-text-color',
+            ),
+        ).toBe('#111111');
+        // The agent's own option, over the same key in the theme.
+        expect(
+            scope?.style.getPropertyValue(
+                '--lightdash-agent-user-messages-background-color',
+            ),
+        ).toBe('#F4F2FF');
+    });
+
     it('calls onThreadChange for matching embed AI agent thread messages', async () => {
         const onThreadChange = vi.fn();
         const { container } = render(
@@ -590,6 +676,7 @@ describe('SDK AI agent', () => {
                 instanceUrl={mockInstanceUrl}
                 agentUuid="test-agent-uuid"
                 onThreadChange={onThreadChange}
+                render="iframe"
             />,
         );
 
@@ -950,7 +1037,11 @@ describe('SDK project token', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         const { findByTestId } = render(
-            <Chart token={projectToken} instanceUrl={instanceUrl} id="chart-1" />,
+            <Chart
+                token={projectToken}
+                instanceUrl={instanceUrl}
+                id="chart-1"
+            />,
         );
 
         expect(await findByTestId('embed-chart-view')).toHaveAttribute(
@@ -958,7 +1049,9 @@ describe('SDK project token', () => {
             chartToken,
         );
         const exchange = fetchMock.mock.calls.find(([url]) =>
-            String(url).endsWith('/api/v1/embed/test-project-uuid/content-token'),
+            String(url).endsWith(
+                '/api/v1/embed/test-project-uuid/content-token',
+            ),
         );
         expect(exchange).toBeDefined();
         const [, requestInit] = exchange!;
@@ -983,8 +1076,16 @@ describe('SDK project token', () => {
 
         const { findAllByTestId } = render(
             <>
-                <Chart token={projectToken} instanceUrl={instanceUrl} id="chart-2" />
-                <Chart token={projectToken} instanceUrl={instanceUrl} id="chart-2" />
+                <Chart
+                    token={projectToken}
+                    instanceUrl={instanceUrl}
+                    id="chart-2"
+                />
+                <Chart
+                    token={projectToken}
+                    instanceUrl={instanceUrl}
+                    id="chart-2"
+                />
             </>,
         );
 
@@ -1030,7 +1131,7 @@ describe('SDK useContentToken', () => {
         const { token, error } = useContentToken(request);
         return (
             <output data-testid="content-token">
-                {error ? `error:${error.message}` : token ?? ''}
+                {error ? `error:${error.message}` : (token ?? '')}
             </output>
         );
     };
@@ -1083,7 +1184,10 @@ describe('SDK useContentToken', () => {
         render(
             <Provider instanceUrl={instanceUrl} token={dashboardToken}>
                 <ShowToken
-                    request={{ type: 'dashboard', dashboardUuid: 'dashboard-9' }}
+                    request={{
+                        type: 'dashboard',
+                        dashboardUuid: 'dashboard-9',
+                    }}
                 />
             </Provider>,
         );
@@ -1112,7 +1216,9 @@ describe('SDK useContentToken', () => {
 
         render(
             <Provider instanceUrl={instanceUrl} token={projectToken}>
-                <ShowToken request={{ type: 'dashboard', dashboardUuid: 'nope' }} />
+                <ShowToken
+                    request={{ type: 'dashboard', dashboardUuid: 'nope' }}
+                />
             </Provider>,
         );
 
@@ -1140,7 +1246,10 @@ describe('SDK API client with a project token', () => {
                 return new Response(
                     JSON.stringify({
                         status: 'ok',
-                        results: { token: 'chart-token', expiresAt: '2030-01-01' },
+                        results: {
+                            token: 'chart-token',
+                            expiresAt: '2030-01-01',
+                        },
                     }),
                     { status: 200 },
                 );
@@ -1182,10 +1291,16 @@ describe('SDK API client with a project token', () => {
             token: (init as RequestInit & { headers: Record<string, string> })
                 .headers['lightdash-embed-token'],
         }));
-        expect(calls.filter((call) => call.url.endsWith('/content-token'))).toHaveLength(1);
-        const chartReads = calls.filter((call) => call.url.includes('/saved/chart-1'));
+        expect(
+            calls.filter((call) => call.url.endsWith('/content-token')),
+        ).toHaveLength(1);
+        const chartReads = calls.filter((call) =>
+            call.url.includes('/saved/chart-1'),
+        );
         expect(chartReads).toHaveLength(2);
-        expect(chartReads.every((call) => call.token === 'chart-token')).toBe(true);
+        expect(chartReads.every((call) => call.token === 'chart-token')).toBe(
+            true,
+        );
     });
 
     it('needs the dashboard uuid to read a dashboard', async () => {
@@ -1195,6 +1310,8 @@ describe('SDK API client with a project token', () => {
             auth: { type: 'embedToken', token: projectToken },
             fetch: vi.fn() as unknown as typeof fetch,
         });
-        await expect(client.getDashboard()).rejects.toThrow('dashboardUuid is required');
+        await expect(client.getDashboard()).rejects.toThrow(
+            'dashboardUuid is required',
+        );
     });
 });

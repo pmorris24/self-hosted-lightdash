@@ -18,6 +18,7 @@ import {
     type PropsWithChildren,
 } from 'react';
 import ErrorBoundary from '../../../../../features/errorBoundary/ErrorBoundary';
+import { embedContractClass } from '../../../embed/styles/embedClassContract';
 import { type DeepResearchRunRegistration } from '../../deepResearch/types';
 import { useDeepResearchThreadRunRegistrations } from '../../hooks/useDeepResearch';
 import { useAgentAiMcpServers } from '../../hooks/useProjectAiMcpServers';
@@ -182,6 +183,7 @@ export const AgentChatDisplay: FC<PropsWithChildren<Props>> = ({
     return (
         <Flex
             ref={viewport}
+            className={embedContractClass('ld-agent-thread')}
             direction="column"
             h={height}
             style={{ flexGrow: 1, overflowY: 'auto' }}
@@ -195,9 +197,18 @@ export const AgentChatDisplay: FC<PropsWithChildren<Props>> = ({
                     px={ChatElementsUtils.centeredElementProps.px}
                     pb="md"
                     gap="xl"
-                    className="ld-grow"
+                    className={embedContractClass(
+                        'ld-agent-messages',
+                        'ld-grow',
+                    )}
                 >
-                    <Stack flex={1} className="ld-grow">
+                    <Stack
+                        flex={1}
+                        className={embedContractClass(
+                            'ld-agent-message-list',
+                            'ld-grow',
+                        )}
+                    >
                         {visibleMessages.map((message, i, xs) => (
                             <Fragment key={`${message.role}-${message.uuid}`}>
                                 {message.role === 'user' &&

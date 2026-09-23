@@ -44,6 +44,7 @@ import { type CustomRendererProps } from 'streamdown';
 import { AiMarkdown } from '../../../../../components/common/AiMarkdown';
 import { CopyActionIcon } from '../../../../../components/common/CopyActionIcon';
 import MantineIcon from '../../../../../components/common/MantineIcon';
+import { embedContractClass } from '../../../embed/styles/embedClassContract';
 import {
     useRetryAiAgentThreadMessageMutation,
     useUpdatePromptFeedbackMutation,
@@ -1117,6 +1118,7 @@ export const AssistantBubble: FC<Props> = memo(
 
         return (
             <Stack
+                className={embedContractClass('ld-agent-answer')}
                 pos="relative"
                 w="100%"
                 gap="xs"

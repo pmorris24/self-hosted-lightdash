@@ -1,0 +1,970 @@
+/* The agent parts: a conversation a page builds itself.
+ *
+ * Every colour, size and radius reads the `agent` theme section through the
+ * `--lightdash-agent-*` custom properties that `AgentSurface` puts on its
+ * container, and falls back to a Mantine token. The fallbacks are what make
+ * the parts follow light and dark without a second set of rules, and what
+ * makes an unset setting change nothing.
+ *
+ * Class names are the public contract: a page can restyle any part with its
+ * own stylesheet, and they never change.
+ */
+
+.lightdash-sdk-scope.ld-agent-surface {
+    /* `AgentSurface` always writes every one of these, so a part can read them
+       without a fallback and a page with no Lightdash provider around it still
+       renders correctly. */
+    --ld-agent-background: var(--lightdash-agent-background-color);
+    --ld-agent-font-family: var(--lightdash-agent-font-family);
+    --ld-agent-font-size: var(--lightdash-agent-primary-font-size);
+    --ld-agent-text: var(--lightdash-agent-primary-text-color);
+    --ld-agent-muted: var(--lightdash-agent-secondary-text-color);
+    --ld-agent-accent: var(--lightdash-agent-accent-color);
+    --ld-agent-accent-text: var(--lightdash-agent-accent-text-color);
+    --ld-agent-border: var(--lightdash-agent-border-color);
+    --ld-agent-radius: var(--lightdash-agent-border-radius);
+    /* A quiet fill for rows and chips, from the surface's own colours. */
+    --ld-agent-subtle: color-mix(
+        in srgb,
+        var(--ld-agent-text) 5%,
+        var(--ld-agent-background)
+    );
+    /* The panels that stay dark in both schemes: tool IN/OUT and code. */
+    --ld-agent-ink: #1a1b1e;
+
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    font-family: var(--ld-agent-font-family);
+    font-size: var(--ld-agent-font-size);
+    line-height: 1.55;
+    color: var(--ld-agent-text);
+    background-color: var(--ld-agent-background);
+}
+
+.lightdash-sdk-scope.ld-agent-surface--bordered {
+    border: 1px solid var(--ld-agent-border);
+    border-radius: var(--ld-agent-radius);
+    overflow: hidden;
+}
+
+.lightdash-sdk-scope.ld-agent-surface *,
+.lightdash-sdk-scope.ld-agent-surface *::before,
+.lightdash-sdk-scope.ld-agent-surface *::after {
+    box-sizing: border-box;
+}
+
+/* ---- chrome ---- */
+.ld-agent-pane-header,
+.ld-agent-toolbar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 12px 0 16px;
+    border-bottom: 1px solid var(--ld-agent-border);
+}
+.ld-agent-pane-header__title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ld-agent-muted);
+}
+.ld-agent-pane-header__actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ld-agent-icon-button {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ld-agent-muted);
+    font-size: 15px;
+    cursor: pointer;
+    transition:
+        background-color 0.12s,
+        color 0.12s;
+}
+.ld-agent-icon-button:hover {
+    background-color: var(--ld-agent-subtle);
+    color: var(--ld-agent-text);
+}
+
+.ld-agent-select {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+.ld-agent-select__button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font: inherit;
+    font-weight: 500;
+    color: var(--ld-agent-text);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s;
+}
+.ld-agent-select__button:hover {
+    background-color: var(--ld-agent-subtle);
+}
+.ld-agent-select__current {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ld-agent-select__chevron {
+    color: var(--ld-agent-muted);
+    font-size: 12px;
+}
+.ld-agent-select__menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--ld-agent-background);
+    border: 1px solid var(--ld-agent-border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 16, 25, 0.18);
+}
+.ld-agent-select__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    font: inherit;
+    color: var(--ld-agent-text);
+    text-align: left;
+    cursor: pointer;
+}
+.ld-agent-select__option:hover {
+    background-color: var(--ld-agent-subtle);
+}
+.ld-agent-select__option.is-selected {
+    font-weight: 600;
+}
+.ld-agent-select__option-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.ld-agent-select__note {
+    font-size: 11px;
+    color: var(--ld-agent-muted);
+}
+
+.ld-agent-status {
+    font-size: 12px;
+    color: var(--ld-agent-muted);
+}
+.ld-agent-status--working {
+    color: var(--ld-agent-accent);
+}
+.ld-agent-status--error {
+    color: #d6453d;
+}
+
+/* ---- welcome ---- */
+.ld-agent-welcome {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    padding: 40px 24px;
+}
+.ld-agent-welcome__inner {
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+}
+.ld-agent-welcome__title {
+    font-size: 30px;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    margin: 0 0 16px;
+}
+.ld-agent-welcome__title span {
+    color: var(--ld-agent-accent);
+}
+.ld-agent-welcome__inner p {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--ld-agent-muted);
+    margin: 0;
+}
+.ld-agent-welcome__inner p + p {
+    margin-top: 16px;
+}
+
+.ld-agent-welcome .ld-agent-mark {
+    margin: 0 auto 18px;
+}
+.ld-agent-mark {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background-color: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 12%,
+        var(--ld-agent-background)
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--ld-agent-accent) 28%,
+            var(--ld-agent-background)
+        );
+}
+
+.ld-agent-suggestion.ld-agent-part {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--ld-agent-text);
+    background-color: var(--ld-agent-subtle);
+    border: 1px solid
+        var(--lightdash-agent-suggestions-border-color, var(--ld-agent-border));
+    border-radius: var(
+        --lightdash-agent-suggestions-border-radius,
+        var(--ld-agent-radius)
+    );
+    padding: 10px 12px;
+    cursor: pointer;
+    transition:
+        background-color 0.12s,
+        border-color 0.12s,
+        transform 0.12s;
+}
+.ld-agent-suggestion.ld-agent-part + .ld-agent-suggestion.ld-agent-part {
+    margin-top: 8px;
+}
+.ld-agent-suggestion.ld-agent-part:hover {
+    background-color: var(
+        --lightdash-agent-suggestions-hover-background-color,
+        var(--ld-agent-subtle)
+    );
+    transform: translateY(-1px);
+}
+.ld-agent-suggestion.ld-agent-part:disabled {
+    opacity: 0.5;
+    cursor: default;
+    transform: none;
+}
+
+/* ---- transcript ---- */
+.ld-agent-transcript {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+}
+.ld-agent-messages.ld-agent-part {
+    display: flex;
+    flex-direction: column;
+    gap: var(--lightdash-agent-body-gap-between-messages, 12px);
+    width: 100%;
+}
+.ld-agent-surface[data-agent-max-width] .ld-agent-messages.ld-agent-part {
+    max-width: var(--lightdash-agent-body-max-width);
+    margin: 0 auto;
+}
+.ld-agent-surface[data-agent-padding] .ld-agent-transcript {
+    padding-left: var(--lightdash-agent-body-padding);
+    padding-right: var(--lightdash-agent-body-padding);
+}
+
+.ld-agent-question {
+    align-self: stretch;
+    background-color: var(
+        --lightdash-agent-user-messages-background-color,
+        var(--ld-agent-subtle)
+    );
+    color: var(
+        --lightdash-agent-user-messages-text-color,
+        var(--ld-agent-text)
+    );
+    border: 1px solid var(--ld-agent-border);
+    border-radius: var(
+        --lightdash-agent-user-messages-border-radius,
+        var(--ld-agent-radius)
+    );
+    padding: 9px 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.ld-agent-answer.ld-agent-part {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.55;
+    color: var(
+        --lightdash-agent-system-messages-text-color,
+        var(--ld-agent-text)
+    );
+    background-color: var(
+        --lightdash-agent-system-messages-background-color,
+        transparent
+    );
+}
+.ld-agent-answer__content {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ld-agent-row {
+    display: flex;
+    gap: 9px;
+    position: relative;
+}
+.ld-agent-row--step {
+    align-items: center;
+    height: 34px;
+    color: var(--ld-agent-muted);
+    font-size: 12px;
+}
+.ld-agent-row--answer {
+    align-items: flex-start;
+    padding-top: 7px;
+}
+.ld-agent-row--answer .ld-agent-answer__content {
+    padding-top: 4px;
+}
+.ld-agent-row--detail {
+    align-items: stretch;
+    padding-bottom: 10px;
+}
+/* connector segments run marker to marker down the gutter */
+.ld-agent-row + .ld-agent-row::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    transform: translateX(-50%);
+    top: -17px;
+    height: 34px;
+    width: 2px;
+    border-radius: 2px;
+    background-color: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 28%,
+        var(--ld-agent-background)
+    );
+}
+.ld-agent-row + .ld-agent-row--answer::before {
+    height: 38px;
+}
+.ld-agent-row__marker {
+    flex: none;
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    background-color: var(--ld-agent-background);
+}
+.ld-agent-row--answer .ld-agent-row__marker,
+.ld-agent-row--detail .ld-agent-row__marker {
+    background-color: transparent;
+}
+.ld-agent-row--detail .ld-agent-row__marker::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    border-radius: 2px;
+    background-color: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 28%,
+        var(--ld-agent-background)
+    );
+}
+.ld-agent-row__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ld-agent-badge {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background-color: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 12%,
+        var(--ld-agent-background)
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--ld-agent-accent) 28%,
+            var(--ld-agent-background)
+        );
+}
+.ld-agent-stopped {
+    color: var(--ld-agent-muted);
+    font-style: italic;
+}
+
+/* tool in/out */
+.ld-agent-io {
+    flex: 1;
+    min-width: 0;
+    background-color: var(--ld-agent-ink);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.ld-agent-io__row {
+    display: flex;
+    gap: 10px;
+    padding: 9px 12px;
+}
+.ld-agent-io__row + .ld-agent-io__row {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ld-agent-io__tag {
+    flex: none;
+    width: 26px;
+    padding-top: 2px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: #6d6d80;
+}
+.ld-agent-io pre {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    max-height: 150px;
+    overflow: auto;
+}
+.ld-agent-io code {
+    background: none;
+    padding: 0;
+    color: #c9c9d6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    line-height: 1.6;
+    white-space: pre;
+}
+.ld-agent-json-key {
+    color: #9be8e8;
+}
+.ld-agent-json-string {
+    color: #fcc17c;
+}
+.ld-agent-json-number {
+    color: #c9a0ff;
+}
+.ld-agent-json-keyword {
+    color: #ec6e52;
+}
+
+/* the answer's markdown */
+.ld-agent-markdown > *:first-child {
+    margin-top: 0;
+}
+.ld-agent-markdown > *:last-child {
+    margin-bottom: 0;
+}
+.ld-agent-markdown p {
+    margin: 0 0 8px;
+}
+.ld-agent-markdown ul {
+    margin: 4px 0 8px;
+    padding-left: 18px;
+}
+.ld-agent-markdown li {
+    margin: 2px 0;
+}
+.ld-agent-markdown code {
+    background-color: var(--ld-agent-subtle);
+    padding: 1px 5px;
+    border-radius: 5px;
+    font-size: 12px;
+}
+.ld-agent-markdown pre {
+    margin: 6px 0 10px;
+    padding: 11px 13px;
+    border-radius: 10px;
+    background-color: var(--ld-agent-ink);
+    overflow-x: auto;
+}
+.ld-agent-markdown pre code {
+    background: none;
+    padding: 0;
+    color: #e8e7f0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.6;
+}
+
+/* the bolt, and the word that shimmers beside it while the agent works */
+.ld-agent-bolt {
+    flex: none;
+    overflow: visible;
+}
+.ld-agent-bolt__path {
+    stroke: var(--ld-agent-accent);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    fill: none;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 0;
+    animation: ld-agent-draw 1.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.ld-agent-bolt--still .ld-agent-bolt__path {
+    animation: none;
+}
+@keyframes ld-agent-draw {
+    0% {
+        stroke-dashoffset: 100;
+    }
+    40% {
+        stroke-dashoffset: 0;
+    }
+    72% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: -100;
+    }
+}
+.ld-agent-shimmer {
+    color: transparent;
+    background: linear-gradient(
+        90deg,
+        var(--ld-agent-muted) 0%,
+        var(--ld-agent-muted) 38%,
+        var(--ld-agent-accent) 50%,
+        var(--ld-agent-muted) 62%,
+        var(--ld-agent-muted) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: ld-agent-shimmer 2.4s linear infinite;
+}
+@keyframes ld-agent-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -140% 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ld-agent-bolt__path,
+    .ld-agent-shimmer {
+        animation: none;
+    }
+}
+
+/* ---- a chart the agent made ---- */
+.ld-agent-chart-card {
+    margin-top: 8px;
+    padding: 10px;
+    background-color: var(
+        --lightdash-agent-charts-background-color,
+        var(--ld-agent-background)
+    );
+    border: 1px solid
+        var(--lightdash-agent-charts-border-color, var(--ld-agent-border));
+    border-radius: var(
+        --lightdash-agent-charts-border-radius,
+        var(--ld-agent-radius)
+    );
+}
+.ld-agent-chart-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.ld-agent-chart-card__title {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.ld-agent-chart-card__types {
+    display: flex;
+    gap: 4px;
+}
+.ld-agent-chart-card__types button {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 24px;
+    font: inherit;
+    font-size: 11px;
+    color: var(--ld-agent-muted);
+    background-color: var(--ld-agent-background);
+    border: 1px solid var(--ld-agent-border);
+    border-radius: 7px;
+    cursor: pointer;
+    transition:
+        color 0.12s,
+        background-color 0.12s,
+        border-color 0.12s;
+}
+.ld-agent-chart-card__types button:hover {
+    color: var(--ld-agent-text);
+}
+.ld-agent-chart-card__types button.is-selected {
+    color: var(--ld-agent-accent);
+    background-color: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 12%,
+        var(--ld-agent-background)
+    );
+    border-color: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 35%,
+        var(--ld-agent-background)
+    );
+}
+
+/* ---- composer ---- */
+.ld-agent-composer.ld-agent-part {
+    flex: none;
+    padding: 0 12px 12px;
+    border-top: 1px solid var(--ld-agent-border);
+    background-color: var(--ld-agent-background);
+}
+.ld-agent-composer__grip {
+    height: 15px;
+    display: grid;
+    place-items: center;
+    cursor: ns-resize;
+    touch-action: none;
+}
+.ld-agent-composer__grip::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    border-radius: 99px;
+    background-color: var(--ld-agent-border);
+    transition:
+        background-color 0.12s,
+        width 0.12s;
+}
+.ld-agent-composer__grip:hover::before,
+.ld-agent-composer__grip:focus-visible::before {
+    width: 52px;
+    background-color: var(--ld-agent-accent);
+}
+.lightdash-sdk-scope.ld-agent-surface .ld-agent-composer__grip:focus-visible {
+    outline: none;
+}
+.ld-agent-composer__shell {
+    background-color: var(
+        --lightdash-agent-input-background-color,
+        var(--ld-agent-background)
+    );
+    border: 1px solid
+        var(--lightdash-agent-input-border-color, var(--ld-agent-border));
+    border-radius: var(
+        --lightdash-agent-input-border-radius,
+        var(--ld-agent-radius)
+    );
+    transition:
+        border-color 0.12s,
+        box-shadow 0.12s;
+}
+.ld-agent-composer__shell:focus-within {
+    border-color: var(
+        --lightdash-agent-input-focus-outline-color,
+        var(--ld-agent-accent)
+    );
+    box-shadow: 0 0 0 3px
+        color-mix(
+            in srgb,
+            var(
+                    --lightdash-agent-input-focus-outline-color,
+                    var(--ld-agent-accent)
+                )
+                18%,
+            transparent
+        );
+}
+.ld-agent-composer__input {
+    display: block;
+    width: 100%;
+    /* The handle above the box sets the height; the corner grabber would be a
+       second way to do the same thing, in the wrong place. */
+    resize: none;
+    min-height: 44px;
+    border: none;
+    background: transparent;
+    padding: 11px 13px 2px;
+    font: inherit;
+    line-height: 1.5;
+    color: var(--ld-agent-text);
+}
+/* The shell draws the focus ring for the whole composer. A host page with its
+   own `textarea:focus-visible` outline would otherwise draw a second one
+   inside the first, and its offset puts it outside the box. */
+.lightdash-sdk-scope.ld-agent-surface .ld-agent-composer__input,
+.lightdash-sdk-scope.ld-agent-surface .ld-agent-composer__input:focus,
+.lightdash-sdk-scope.ld-agent-surface .ld-agent-composer__input:focus-visible {
+    outline: none;
+}
+.ld-agent-composer__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 6px 6px 13px;
+}
+.ld-agent-composer__files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px 0;
+}
+.ld-agent-composer__file {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px 3px 9px;
+    font-size: 11.5px;
+    color: var(--ld-agent-text);
+    background-color: var(--ld-agent-subtle);
+    border: 1px solid var(--ld-agent-border);
+    border-radius: 999px;
+}
+.ld-agent-composer__file button {
+    border: 0;
+    background: none;
+    color: var(--ld-agent-muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+}
+.ld-agent-composer__attach {
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 12px;
+    color: var(--ld-agent-muted);
+    cursor: pointer;
+    padding: 4px 2px;
+    border-radius: 6px;
+}
+.ld-agent-composer__attach:hover {
+    color: var(--ld-agent-text);
+}
+.ld-agent-composer__hint {
+    display: block;
+    text-align: right;
+    padding: 6px 4px 0;
+    font-size: 10.5px;
+    color: var(--ld-agent-muted);
+    user-select: none;
+}
+.ld-agent-composer__hint kbd {
+    font: inherit;
+    font-size: 9.5px;
+    background-color: var(--ld-agent-subtle);
+    border: 1px solid var(--ld-agent-border);
+    border-radius: 4px;
+    padding: 0 4px;
+}
+
+.ld-agent-send {
+    flex: none;
+    margin-left: auto;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 9px;
+    background-color: var(--ld-agent-accent);
+    color: var(--ld-agent-accent-text);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition:
+        opacity 0.12s,
+        transform 0.12s;
+}
+.ld-agent-send:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+.ld-agent-send:not(:disabled):hover {
+    transform: translateY(-1px);
+}
+.ld-agent-send--stop {
+    background-color: var(--ld-agent-text);
+}
+.ld-agent-send__stop {
+    width: 11px;
+    height: 11px;
+    border-radius: 2.5px;
+    background-color: var(--ld-agent-background);
+}
+
+/* ---- the smaller things the product's own agent has ---- */
+.ld-agent-question-turn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+.ld-agent-timestamp {
+    font-size: 11px;
+    color: var(--ld-agent-muted);
+}
+
+.ld-agent-day {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0;
+    font-size: 11px;
+    color: var(--ld-agent-muted);
+}
+.ld-agent-day::before,
+.ld-agent-day::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: var(--ld-agent-border);
+}
+
+.ld-agent-copy {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--ld-agent-border);
+    background-color: var(--ld-agent-background);
+    color: var(--ld-agent-muted);
+    border-radius: 7px;
+    cursor: pointer;
+    opacity: 0;
+    transition:
+        opacity 0.12s,
+        color 0.12s;
+}
+.ld-agent-row--answer:hover .ld-agent-copy,
+.ld-agent-copy:focus-visible {
+    opacity: 1;
+}
+.ld-agent-copy:hover {
+    color: var(--ld-agent-accent);
+}
+
+.ld-agent-typing {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+}
+.ld-agent-typing span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--ld-agent-muted);
+    animation: ld-agent-typing 1s infinite ease-in-out;
+}
+.ld-agent-typing span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+.ld-agent-typing span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+@keyframes ld-agent-typing {
+    0%,
+    80%,
+    100% {
+        opacity: 0.35;
+    }
+    40% {
+        opacity: 1;
+    }
+}
+
+.ld-agent-retry {
+    margin-top: 8px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: #b4232a;
+    background-color: color-mix(
+        in srgb,
+        #b4232a 8%,
+        var(--ld-agent-background)
+    );
+    border: 1px solid
+        color-mix(in srgb, #b4232a 22%, var(--ld-agent-background));
+    border-radius: var(--ld-agent-radius);
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+.ld-agent-jump {
+    position: sticky;
+    bottom: 8px;
+    align-self: center;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border: 1px solid var(--ld-agent-border);
+    border-radius: 50%;
+    background-color: var(--ld-agent-background);
+    color: var(--ld-agent-text);
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(15, 16, 25, 0.18);
+}
+
+.ld-agent-composer__hint.is-near-limit {
+    color: #b4232a;
+    font-weight: 600;
+}

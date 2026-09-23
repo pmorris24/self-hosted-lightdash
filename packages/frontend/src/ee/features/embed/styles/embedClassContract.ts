@@ -2,7 +2,7 @@
  * Embedded surfaces that expose a public class contract. Every contract class
  * is scoped to one of these. Add a surface here before using it in a classname.
  */
-type EmbedSurface = 'dashboard' | 'sdk';
+type EmbedSurface = 'dashboard' | 'sdk' | 'agent';
 
 /**
  * Public CSS class contract for embedded dashboards.
@@ -34,6 +34,19 @@ export const EMBED_CLASS_CONTRACT = [
     'ld-dashboard-export-all', // dashboard-level "Export all" (CSV/XLSX ZIP) button
     'ld-sdk-root', // inline container the React SDK renders into
     'ld-sdk-portal', // body-level container for the SDK's dropdowns, modals and notifications
+    // The AI agent's conversation. These sit on shared chat components, so
+    // they are present in the app too; only the SDK's own stylesheet styles
+    // them, and only under `ld-agent-root`.
+    'ld-agent-root', // container the SDK renders the agent into
+    'ld-agent-workspace', // the conversation and its side panels
+    'ld-agent-thread', // the scrolling conversation
+    'ld-agent-messages', // the column the messages are laid out in
+    'ld-agent-message-list', // the messages themselves, one under the other
+    'ld-agent-user-message', // one question
+    'ld-agent-answer', // one answer, its tool work included
+    'ld-agent-chart', // a chart the agent made, rendered in the conversation
+    'ld-agent-composer', // the box a viewer types in
+    'ld-agent-suggestion', // one suggested question
 ] as const satisfies readonly `ld-${EmbedSurface}-${string}`[];
 
 export type EmbedContractClassName = (typeof EMBED_CLASS_CONTRACT)[number];

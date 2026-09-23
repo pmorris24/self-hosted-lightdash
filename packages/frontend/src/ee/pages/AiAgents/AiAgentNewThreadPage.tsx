@@ -69,6 +69,7 @@ import { setThreadSqlMode } from '../../features/aiCopilot/store/aiAgentThreadMo
 import { useAiAgentStoreDispatch } from '../../features/aiCopilot/store/hooks';
 import { type AiAgentToolResult } from '../../features/aiCopilot/types';
 import { getDashboardNavigationUrlFromContentToolResult } from '../../features/aiCopilot/utils/contentToolResultNavigation';
+import useEmbed from '../../providers/Embed/useEmbed';
 import { type AgentContext } from './AgentPage';
 import styles from './AiAgentNewThreadPage.module.css';
 
@@ -91,6 +92,8 @@ const AiAgentNewThreadPage: FC = () => {
     const projectUuid = useProjectUuid();
     const { track } = useTracking();
     const isEmbed = isEmbedAiAgentRoute();
+    // Which parts of the agent this embed asked for; everything by default.
+    const { agentFeatures: features, agentAvatar } = useEmbed();
     const [searchParams] = useSearchParams();
     const chartUuid = searchParams.get('chartUuid');
     const dashboardUuid = searchParams.get('dashboardUuid');
@@ -378,24 +381,28 @@ const AiAgentNewThreadPage: FC = () => {
                         data-tour-return="none"
                         data-tour-resultdocs="agents/use-ai-agents.mdx#core-capabilities:li1"
                     >
-                        <Box className={styles.agentAvatarWrap}>
-                            <LightdashUserAvatar
-                                size="lg"
-                                name={agent.name || 'AI'}
-                                src={agent.imageUrl}
-                            />
-                            <DefaultAgentButton
-                                projectUuid={projectUuid}
-                                agentUuid={agent.uuid}
-                                size="xs"
-                                className={styles.defaultAgentBadge}
-                            />
-                        </Box>
+                        {features.avatar && (
+                            <Box className={styles.agentAvatarWrap}>
+                                {agentAvatar?.({ size: 64 }) ?? (
+                                    <LightdashUserAvatar
+                                        size="lg"
+                                        name={agent.name || 'AI'}
+                                        src={agent.imageUrl}
+                                    />
+                                )}
+                                <DefaultAgentButton
+                                    projectUuid={projectUuid}
+                                    agentUuid={agent.uuid}
+                                    size="xs"
+                                    className={styles.defaultAgentBadge}
+                                />
+                            </Box>
+                        )}
                         <Group justify="center" gap={4}>
                             <Title order={4} ta="center" {...agentTourProps}>
                                 {agent.name}
                             </Title>
-                            {agent.instruction && (
+                            {agent.instruction && features.instructions && (
                                 <Popover withArrow>
                                     <Popover.Target>
                                         <ActionIcon>
@@ -422,7 +429,7 @@ const AiAgentNewThreadPage: FC = () => {
                                 </Popover>
                             )}
                         </Group>
-                        {agent.description && (
+                        {agent.description && features.description && (
                             <Text
                                 size="sm"
                                 c="dimmed"
@@ -437,7 +444,7 @@ const AiAgentNewThreadPage: FC = () => {
                                 {agent.description}
                             </Text>
                         )}
-                        {agent.tags && (
+                        {agent.tags && features.tags && (
                             <Group gap="xxs">
                                 {agent.tags.map((tag, i) => (
                                     <Pill key={i} size="sm">
@@ -446,14 +453,16 @@ const AiAgentNewThreadPage: FC = () => {
                                 ))}
                             </Group>
                         )}
-                        <ThreadRetentionNotice
-                            agentThreadRetentionHours={
-                                agent.threadRetentionHours ?? null
-                            }
-                        />
+                        {features.retentionNotice && (
+                            <ThreadRetentionNotice
+                                agentThreadRetentionHours={
+                                    agent.threadRetentionHours ?? null
+                                }
+                            />
+                        )}
                     </Stack>
 
-                    {projectUuid && agentUuid && (
+                    {projectUuid && agentUuid && features.integrations && (
                         <AiAgentNewThreadMcpConnections
                             projectUuid={projectUuid}
                             agentUuid={agentUuid}
@@ -461,7 +470,7 @@ const AiAgentNewThreadPage: FC = () => {
                         />
                     )}
 
-                    {verifiedQuestions && (
+                    {verifiedQuestions && features.suggestedQuestions && (
                         <SuggestedQuestions
                             questions={verifiedQuestions}
                             onQuestionClick={(question) =>
@@ -471,23 +480,30 @@ const AiAgentNewThreadPage: FC = () => {
                         />
                     )}
 
-                    {previewItems.length > 0 && projectUuid && (
-                        <Stack gap="xs">
-                            <Text size="xs" fw={600} c="dimmed" tt="uppercase">
-                                Pinned context
-                            </Text>
-                            <Group gap="xs" wrap="wrap">
-                                {previewItems.map((item) => (
-                                    <PinnedContextCard
-                                        key={getPromptContextItemKey(item)}
-                                        item={item}
-                                        projectUuid={projectUuid}
-                                        previewScope={null}
-                                    />
-                                ))}
-                            </Group>
-                        </Stack>
-                    )}
+                    {previewItems.length > 0 &&
+                        projectUuid &&
+                        features.pinnedContext && (
+                            <Stack gap="xs">
+                                <Text
+                                    size="xs"
+                                    fw={600}
+                                    c="dimmed"
+                                    tt="uppercase"
+                                >
+                                    Pinned context
+                                </Text>
+                                <Group gap="xs" wrap="wrap">
+                                    {previewItems.map((item) => (
+                                        <PinnedContextCard
+                                            key={getPromptContextItemKey(item)}
+                                            item={item}
+                                            projectUuid={projectUuid}
+                                            previewScope={null}
+                                        />
+                                    ))}
+                                </Group>
+                            </Stack>
+                        )}
 
                     {showBattleSetup && (
                         <BattleModeSetup

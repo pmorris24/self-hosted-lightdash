@@ -4,16 +4,24 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { EMBED_CLASS_CONTRACT, embedContractClass } from './embedClassContract';
 
-// Every `embedContractClass(...)` call site lives in the embed wrappers or
-// the SDK entry (which owns the `ld-sdk-*` containers).
+// Every `embedContractClass(...)` call site lives in the embed wrappers, the
+// SDK (which owns the `ld-sdk-*` containers and the agent's own root) or the
+// agent chat components the SDK renders inline.
 const testDir = dirname(fileURLToPath(import.meta.url));
-const componentsDir = join(testDir, '../EmbedDashboard/components');
-const sdkEntry = join(testDir, '../../../../../sdk/index.tsx');
+const sdkDir = join(testDir, '../../../../../sdk');
+const componentDirs = [
+    join(testDir, '../EmbedDashboard/components'),
+    join(testDir, '../../aiCopilot/components/ChatElements'),
+    join(testDir, '../../aiCopilot/components/AiAgentPageLayout'),
+    join(sdkDir, 'ai'),
+];
 const componentSource = [
-    ...readdirSync(componentsDir)
-        .filter((file) => file.endsWith('.tsx'))
-        .map((file) => join(componentsDir, file)),
-    sdkEntry,
+    ...componentDirs.flatMap((dir) =>
+        readdirSync(dir)
+            .filter((file) => file.endsWith('.tsx'))
+            .map((file) => join(dir, file)),
+    ),
+    join(sdkDir, 'index.tsx'),
 ]
     .map((file) => readFileSync(file, 'utf-8'))
     .join('\n');
@@ -37,6 +45,16 @@ describe('embed class contract', () => {
             'ld-dashboard-export-all',
             'ld-sdk-root',
             'ld-sdk-portal',
+            'ld-agent-root',
+            'ld-agent-workspace',
+            'ld-agent-thread',
+            'ld-agent-messages',
+            'ld-agent-message-list',
+            'ld-agent-user-message',
+            'ld-agent-answer',
+            'ld-agent-chart',
+            'ld-agent-composer',
+            'ld-agent-suggestion',
         ]);
     });
 

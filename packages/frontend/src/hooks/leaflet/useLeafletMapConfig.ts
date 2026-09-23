@@ -167,8 +167,11 @@ const getMapZoom = (mapType: MapChartLocation): number => {
     }
 };
 
-const CARTO_ATTRIBUTION =
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_ATTRIBUTION =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+// CARTO basemaps now watermark tiles requested without an API key, so the
+// light, dark and voyager presets all draw OpenStreetMap tiles.
 
 export const getTileConfig = (
     background: MapTileBackground | undefined,
@@ -190,21 +193,11 @@ export const getTileConfig = (
             };
 
         case MapTileBackground.LIGHT:
-            return {
-                url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                attribution: CARTO_ATTRIBUTION,
-            };
-
         case MapTileBackground.DARK:
-            return {
-                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                attribution: CARTO_ATTRIBUTION,
-            };
-
         case MapTileBackground.VOYAGER:
             return {
-                url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                attribution: CARTO_ATTRIBUTION,
+                url: OSM_URL,
+                attribution: OSM_ATTRIBUTION,
             };
 
         case MapTileBackground.OPENSTREETMAP:

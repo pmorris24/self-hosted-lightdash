@@ -23,6 +23,7 @@ import {
 import { useLocation } from 'react-router';
 import MantineIcon from '../../../../../components/common/MantineIcon';
 import ErrorBoundary from '../../../../../features/errorBoundary/ErrorBoundary';
+import { embedContractClass } from '../../../embed/styles/embedClassContract';
 import {
     clearPreview,
     selectPreview,
@@ -112,9 +113,11 @@ export const AiAgentPageLayout: React.FC<Props> = ({
 
     return (
         <div
-            className={`${styles.workspace} ${
-                isEmbed ? styles.workspaceEmbed : ''
-            }`}
+            className={embedContractClass(
+                'ld-agent-workspace',
+                styles.workspace,
+                isEmbed && styles.workspaceEmbed,
+            )}
         >
             <PanelGroup
                 direction="horizontal"

@@ -1,4 +1,7 @@
-import { type UiStringKey } from '@lightdash/common';
+import {
+    DEFAULT_SDK_AGENT_FEATURES,
+    type UiStringKey,
+} from '@lightdash/common';
 import { useContext } from 'react';
 import { useParams } from 'react-router';
 import EmbedProviderContext from './context';
@@ -30,6 +33,7 @@ function useEmbed(): EmbedContext {
             languageMap: undefined,
             onExplore: (_options: { chart: EmbedExploreChart }) => {},
             t: (_input: UiStringKey) => undefined,
+            agentFeatures: DEFAULT_SDK_AGENT_FEATURES,
             mode: 'direct',
             theme: 'light',
             backgroundColor: null,

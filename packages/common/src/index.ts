@@ -397,6 +397,7 @@ export * from './utils/i18n/chartAsCode';
 export * from './utils/i18n/dashboardAsCode';
 export * from './utils/i18n/merge';
 export * from './utils/i18n/types';
+export * from './types/sdkAgentFeatures';
 export * from './utils/i18n/uiStrings';
 export * from './utils/item';
 export * from './utils/mergeQueryItems';

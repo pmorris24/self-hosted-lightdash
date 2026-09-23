@@ -8,6 +8,7 @@ import { Link, useParams } from 'react-router';
 import { useProjectUuid } from '../../../../../hooks/useProjectUuid';
 import { useTimeAgo } from '../../../../../hooks/useTimeAgo';
 import useApp from '../../../../../providers/App/useApp';
+import { embedContractClass } from '../../../embed/styles/embedClassContract';
 import { PinnedContextCard } from '../PinnedContextCard/PinnedContextCard';
 import { PinnedReviewContextGroup } from '../PinnedContextCard/PinnedReviewEntityCard';
 import { isReviewEntityItem } from '../PinnedContextCard/reviewEntityItem';
@@ -137,9 +138,11 @@ export const UserBubble: FC<Props> = ({
                 py={6}
                 px="sm"
                 color="white"
-                className={`${styles.messageCard} ${
-                    isEmptyMessage ? styles.emptyMessageCard : ''
-                }`}
+                className={embedContractClass(
+                    'ld-agent-user-message',
+                    styles.messageCard,
+                    isEmptyMessage && styles.emptyMessageCard,
+                )}
             >
                 {isEmptyMessage ? (
                     <Text size="xs" fs="italic" c="dimmed">

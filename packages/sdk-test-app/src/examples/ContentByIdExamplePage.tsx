@@ -104,8 +104,9 @@ function TranslatedChart({
         <>
             <div style={gridStyle}>
                 <div style={{ height: 320 }} data-testid="translated-chart">
-                    <Lightdash.DataChartWidget
-                        {...chartModelTranslator.toDataChartWidgetProps(
+                    <Lightdash.DataChart
+                        frame={chartModelTranslator.toFrame(chart.data)}
+                        {...chartModelTranslator.toDataChartProps(
                             chart.data,
                             query.data,
                         )}
@@ -174,7 +175,9 @@ function ContentById({ tokens }: { tokens: DevTokens }) {
             </section>
 
             <section>
-                <h3 style={sectionTitleStyle}>ChartWidget with the saved title</h3>
+                <h3 style={sectionTitleStyle}>
+                    A framed chart with the saved title
+                </h3>
                 <p style={sectionDescStyle}>
                     One saved chart per frame, each with its own chart token.
                     The frame takes the chart's name and description from the
@@ -187,7 +190,8 @@ function ContentById({ tokens }: { tokens: DevTokens }) {
                             style={{ height: 340 }}
                             data-testid="widget-by-id"
                         >
-                            <Lightdash.ChartWidget
+                            <Lightdash.Chart
+                                frame={{}}
                                 id={chart.uuid}
                                 instanceUrl={tokens.instanceUrl}
                                 token={chart.token}

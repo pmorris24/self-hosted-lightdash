@@ -1,0 +1,331 @@
+/* The agent's theme.
+ *
+ * A page sets an `agent` section on `Lightdash.ThemeProvider`, or
+ * `styleOptions` on `Lightdash.AiAgent`; the SDK puts the result on the
+ * agent's outer container as `--lightdash-agent-*` custom properties, named
+ * after their place in the theme. Every rule here falls back to what Lightdash
+ * itself uses, so a setting a page left out changes nothing.
+ *
+ * Two containers, deliberately: the outer one resolves each setting against
+ * the value Lightdash would have used, and `ld-agent-root` feeds the result
+ * back into Mantine's own variables. A single element cannot do both — a
+ * variable that reads itself is a cycle — and going through Mantine is what
+ * carries a chosen accent or font into the parts of the conversation that have
+ * no class of their own.
+ *
+ * Selectors carry the SDK scope class explicitly so they outrank the app's
+ * component styles; the build's `:where()` prefix adds no weight of its own.
+ */
+
+.lightdash-sdk-scope .lightdash-agent-scope {
+    height: 100%;
+
+    --ld-agent-background: var(
+        --lightdash-agent-background-color,
+        var(--mantine-color-body)
+    );
+    --ld-agent-font-family: var(
+        --lightdash-agent-font-family,
+        var(--mantine-font-family)
+    );
+    --ld-agent-font-size: var(
+        --lightdash-agent-primary-font-size,
+        var(--mantine-font-size-sm)
+    );
+    --ld-agent-text: var(
+        --lightdash-agent-primary-text-color,
+        var(--mantine-color-text)
+    );
+    --ld-agent-muted: var(
+        --lightdash-agent-secondary-text-color,
+        var(--mantine-color-dimmed)
+    );
+    --ld-agent-accent: var(
+        --lightdash-agent-accent-color,
+        var(--mantine-primary-color-filled)
+    );
+    --ld-agent-accent-text: var(
+        --lightdash-agent-accent-text-color,
+        var(--mantine-primary-color-contrast)
+    );
+    --ld-agent-border: var(
+        --lightdash-agent-border-color,
+        var(--mantine-color-default-border)
+    );
+    --ld-agent-radius: var(
+        --lightdash-agent-border-radius,
+        var(--mantine-radius-md)
+    );
+}
+
+.lightdash-sdk-scope .lightdash-agent-scope .ld-agent-root[data-agent-themed] {
+    height: 100%;
+
+    --mantine-color-body: var(--ld-agent-background);
+    --mantine-color-text: var(--ld-agent-text);
+    --mantine-color-dimmed: var(--ld-agent-muted);
+    --mantine-color-default-border: var(--ld-agent-border);
+    --mantine-font-family: var(--ld-agent-font-family);
+    --mantine-radius-md: var(--ld-agent-radius);
+    --mantine-primary-color-filled: var(--ld-agent-accent);
+    --mantine-primary-color-filled-hover: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 85%,
+        black
+    );
+    --mantine-primary-color-light: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 12%,
+        transparent
+    );
+    --mantine-primary-color-light-hover: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 18%,
+        transparent
+    );
+    --mantine-primary-color-contrast: var(--ld-agent-accent-text);
+    --mantine-color-anchor: var(--ld-agent-accent);
+    /* The agent's own components name palette entries rather than the
+       semantic tokens — white and the dark ramp for surfaces, the ldGray ramp
+       for text and hairlines, `foreground` for the send button. A theme only
+       reaches them by redefining the entries themselves, derived from the
+       four colours a page actually sets. Scoped to the agent; nothing else on
+       the page moves. */
+    --mantine-color-white: var(--ld-agent-background);
+    --mantine-color-body: var(--ld-agent-background);
+    --mantine-color-dark-9: color-mix(
+        in srgb,
+        var(--ld-agent-background) 92%,
+        #000
+    );
+    --mantine-color-dark-8: var(--ld-agent-background);
+    --mantine-color-dark-7: var(--ld-agent-background);
+    --mantine-color-dark-6: color-mix(
+        in srgb,
+        var(--ld-agent-text) 4%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-dark-5: color-mix(
+        in srgb,
+        var(--ld-agent-border) 70%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-dark-4: var(--ld-agent-border);
+    --mantine-color-dark-3: color-mix(
+        in srgb,
+        var(--ld-agent-text) 45%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-dark-2: var(--ld-agent-muted);
+    --mantine-color-dark-1: color-mix(
+        in srgb,
+        var(--ld-agent-text) 80%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-dark-0: var(--ld-agent-text);
+    /* The product's neutral ramp: 0 a canvas, 2 a hairline, 6 dimmed text,
+       9 body text. */
+    --mantine-color-ldGray-0: color-mix(
+        in srgb,
+        var(--ld-agent-text) 3%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-ldGray-1: color-mix(
+        in srgb,
+        var(--ld-agent-text) 6%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-ldGray-2: var(--ld-agent-border);
+    --mantine-color-ldGray-3: color-mix(
+        in srgb,
+        var(--ld-agent-border) 60%,
+        var(--ld-agent-text)
+    );
+    --mantine-color-ldGray-4: color-mix(
+        in srgb,
+        var(--ld-agent-text) 30%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-ldGray-5: color-mix(
+        in srgb,
+        var(--ld-agent-text) 45%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-ldGray-6: var(--ld-agent-muted);
+    --mantine-color-ldGray-7: color-mix(
+        in srgb,
+        var(--ld-agent-text) 75%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-ldGray-8: color-mix(
+        in srgb,
+        var(--ld-agent-text) 88%,
+        var(--ld-agent-background)
+    );
+    --mantine-color-ldGray-9: var(--ld-agent-text);
+    /* The send button and anything else drawn on the foreground colour. */
+    --mantine-color-foreground-0: var(--ld-agent-accent);
+    --mantine-color-foreground-1: color-mix(
+        in srgb,
+        var(--ld-agent-accent) 85%,
+        #000
+    );
+    --mantine-radius-sm: calc(var(--ld-agent-radius) * 0.6);
+    --mantine-radius-lg: calc(var(--ld-agent-radius) * 1.4);
+    --mantine-radius-xl: calc(var(--ld-agent-radius) * 2);
+
+    background-color: var(--ld-agent-background);
+    color: var(--ld-agent-text);
+    font-family: var(--ld-agent-font-family);
+}
+
+/* Sizing applies to the native agent too; theme overrides do not. */
+.lightdash-sdk-scope .ld-agent-root {
+    height: 100%;
+}
+
+/* The agent fills the host's box; only the standalone iframe owns a viewport. */
+.lightdash-sdk-scope .ld-agent-root .ld-agent-workspace {
+    height: 100%;
+}
+
+.lightdash-sdk-scope .ld-agent-root[data-agent-themed] .ld-agent-thread {
+    background-color: var(--ld-agent-background);
+    font-size: var(--ld-agent-font-size);
+}
+
+/* `body`: the column the conversation is laid out in. Mantine writes its
+   width, padding and gap as inline styles, which nothing but `!important`
+   outranks. An unset custom property would resolve to `unset` rather than be
+   ignored, so these rules hang off the attributes the SDK adds only for the
+   settings a page actually made. */
+.lightdash-sdk-scope
+    .ld-agent-root[data-agent-themed][data-agent-max-width]
+    .ld-agent-messages {
+    max-width: var(--lightdash-agent-body-max-width) !important;
+}
+
+.lightdash-sdk-scope
+    .ld-agent-root[data-agent-themed][data-agent-padding]
+    .ld-agent-messages {
+    padding-left: var(--lightdash-agent-body-padding) !important;
+    padding-right: var(--lightdash-agent-body-padding) !important;
+}
+
+.lightdash-sdk-scope
+    .ld-agent-root[data-agent-themed][data-agent-message-gap]
+    .ld-agent-message-list {
+    --stack-gap: var(--lightdash-agent-body-gap-between-messages) !important;
+}
+
+/* `userMessages`: a question the viewer asked. */
+.lightdash-sdk-scope .ld-agent-root[data-agent-themed] .ld-agent-user-message {
+    background-color: var(
+        --lightdash-agent-user-messages-background-color,
+        var(--mantine-color-default-hover)
+    );
+    color: var(
+        --lightdash-agent-user-messages-text-color,
+        var(--ld-agent-text)
+    );
+    border-color: var(--ld-agent-border);
+    border-radius: var(
+        --lightdash-agent-user-messages-border-radius,
+        var(--ld-agent-radius)
+    );
+}
+
+.lightdash-sdk-scope
+    .ld-agent-root[data-agent-themed]
+    .ld-agent-user-message
+    * {
+    color: var(--lightdash-agent-user-messages-text-color, inherit);
+}
+
+/* `systemMessages`: an answer the agent gave. */
+.lightdash-sdk-scope .ld-agent-root[data-agent-themed] .ld-agent-answer {
+    background-color: var(
+        --lightdash-agent-system-messages-background-color,
+        transparent
+    );
+    color: var(
+        --lightdash-agent-system-messages-text-color,
+        var(--ld-agent-text)
+    );
+}
+
+/* `charts`: a chart the agent made. */
+.lightdash-sdk-scope .ld-agent-root[data-agent-themed] .ld-agent-chart {
+    background-color: var(
+        --lightdash-agent-charts-background-color,
+        var(--ld-agent-background)
+    );
+    border-color: var(
+        --lightdash-agent-charts-border-color,
+        var(--ld-agent-border)
+    );
+    border-radius: var(
+        --lightdash-agent-charts-border-radius,
+        var(--ld-agent-radius)
+    );
+}
+
+/* `input`: the box the viewer types in. */
+.lightdash-sdk-scope
+    .ld-agent-root[data-agent-themed]
+    .ld-agent-composer
+    [data-variant='card'] {
+    background-color: var(
+        --lightdash-agent-input-background-color,
+        var(--ld-agent-background)
+    );
+    border-color: var(
+        --lightdash-agent-input-border-color,
+        var(--ld-agent-border)
+    );
+    border-radius: var(
+        --lightdash-agent-input-border-radius,
+        var(--ld-agent-radius)
+    );
+}
+
+.lightdash-sdk-scope
+    .ld-agent-root[data-agent-themed]
+    .ld-agent-composer
+    [data-variant='card']:focus-within {
+    outline-color: var(
+        --lightdash-agent-input-focus-outline-color,
+        var(--ld-agent-accent)
+    );
+}
+
+/* `suggestions`: the questions offered before the first message. */
+.lightdash-sdk-scope .ld-agent-root[data-agent-themed] .ld-agent-suggestion {
+    background-color: var(
+        --lightdash-agent-suggestions-background-color,
+        var(--ld-agent-background)
+    );
+    color: var(--lightdash-agent-suggestions-text-color, var(--ld-agent-text));
+    border-color: var(
+        --lightdash-agent-suggestions-border-color,
+        var(--ld-agent-border)
+    );
+    border-radius: var(
+        --lightdash-agent-suggestions-border-radius,
+        var(--ld-agent-radius)
+    );
+    font-family: var(--ld-agent-font-family);
+}
+
+.lightdash-sdk-scope
+    .ld-agent-root[data-agent-themed]
+    .ld-agent-suggestion:hover {
+    background-color: var(
+        --lightdash-agent-suggestions-hover-background-color,
+        var(--mantine-color-default-hover)
+    );
+    color: var(
+        --lightdash-agent-suggestions-hover-text-color,
+        var(--ld-agent-text)
+    );
+}

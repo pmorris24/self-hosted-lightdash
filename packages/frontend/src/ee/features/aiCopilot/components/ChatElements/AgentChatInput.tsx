@@ -50,6 +50,8 @@ import { useServerFeatureFlag } from '../../../../../hooks/useServerOrClientFeat
 import useApp from '../../../../../providers/App/useApp';
 import useTracking from '../../../../../providers/Tracking/useTracking';
 import { EventName } from '../../../../../types/Events';
+import useEmbed from '../../../../providers/Embed/useEmbed';
+import { embedContractClass } from '../../../embed/styles/embedClassContract';
 import { subscribeToDeepResearchComposerPrompt } from '../../deepResearch/deepResearchRegistry';
 import {
     canShowDeepResearchNudge,
@@ -97,7 +99,10 @@ import {
     PromptAttachments,
     type ExternalSourceAttachment,
 } from './PromptAttachments';
-import { getAgentSuggestionModes } from './suggestionModes';
+import {
+    getAgentSuggestionModes,
+    resolveAgentSuggestionChips,
+} from './suggestionModes';
 
 const SUGGESTION_CHIP_MENTION_NAME = 'suggestionChip';
 
@@ -445,15 +450,16 @@ export const AgentChatInput = ({
         projectUuid &&
         agents.length > 0
     );
+    const { agentFeatures, agentSuggestedQuestions } = useEmbed();
     const isMinimalMode = !showModelSelector && !showAgentSelector;
 
     const { emptyStateMode, postResponseMode } = getAgentSuggestionModes({
         disabled,
-        isMinimalMode,
+        isMinimalMode: isMinimalMode && !agentSuggestedQuestions?.length,
         loading,
         messageCount,
         latestAssistantMessageUuid,
-        suggestionsEnabled: showSuggestions,
+        suggestionsEnabled: showSuggestions && agentFeatures.suggestedQuestions,
         threadUuid,
     });
 
@@ -669,6 +675,8 @@ export const AgentChatInput = ({
         activeMessageUuid,
     );
     const canSteer = canInterrupt && !disabled && !hasRequestedInterrupt;
+    // A host page can leave attachments out of its embed.
+    const allowAttachments = agentFeatures.attachments;
     const canAttachExternalSource = Boolean(
         projectUuid &&
         externalSourcesFlag?.enabled &&
@@ -691,7 +699,7 @@ export const AgentChatInput = ({
         ),
     );
     const showAttachControl = Boolean(
-        canAttachExternalSource && !disabled && !canSteer,
+        canAttachExternalSource && !disabled && !canSteer && allowAttachments,
     );
     const canUseAttachControl = showAttachControl && composerMode === 'ask';
     const showDeepResearchInComposerMenu = canStartDeepResearch && !disabled;
@@ -828,8 +836,10 @@ export const AgentChatInput = ({
 
     const chipRow = useMemo(() => {
         if (!emptyStateMode && !postResponseMode) return null;
-        if (suggestionsQuery.isError) return null;
-        const chips = suggestionsQuery.data?.chips ?? [];
+        const chips = resolveAgentSuggestionChips(
+            suggestionsQuery.data?.chips,
+            emptyStateMode ? agentSuggestedQuestions : undefined,
+        );
         if (chips.length === 0) return null;
         return (
             <AgentSuggestionChips
@@ -843,7 +853,7 @@ export const AgentChatInput = ({
     }, [
         emptyStateMode,
         postResponseMode,
-        suggestionsQuery.isError,
+        agentSuggestedQuestions,
         suggestionsQuery.data,
         handleChipClick,
         handleImpression,
@@ -1172,9 +1182,11 @@ export const AgentChatInput = ({
     return (
         <Box
             ref={rootRef}
-            className={`${styles.container} ${
-                showDisabledBanner ? styles.disabledBannerVisible : ''
-            }`}
+            className={embedContractClass(
+                'ld-agent-composer',
+                styles.container,
+                showDisabledBanner && styles.disabledBannerVisible,
+            )}
             data-dense={dense}
         >
             {isThreadInput && renderChipRow(styles.threadChipFlow)}

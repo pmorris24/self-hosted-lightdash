@@ -6,6 +6,26 @@ import {
 import { useResolvedConfig } from '../connection';
 import { type AgentArtifact } from './agentChartTranslator';
 
+/**
+ * One thing the agent did while answering: a tool it called, what it sent and
+ * what came back. A page can show the work — the way a coding agent shows its
+ * steps — or ignore all of it and render the answer alone.
+ */
+export type AgentStep = {
+    // The tool call's own id, stable for the life of the step.
+    id: string;
+    // The tool's name as the agent reports it, e.g. `generateBarVizConfig`.
+    toolName: string;
+    // What the agent called the step, when it said: "Running query".
+    label: string;
+    // The arguments the agent sent, once they are complete; null until then.
+    input: unknown;
+    // What the tool returned, as text.
+    output: string | null;
+    // True until the tool returns.
+    isRunning: boolean;
+};
+
 export type AgentMessage = {
     id: string;
     role: 'user' | 'assistant';
@@ -13,8 +33,14 @@ export type AgentMessage = {
     // Charts the agent made while answering. Feed them to the chart pieces
     // through `agentChartTranslator`.
     charts: AgentArtifact[];
+    // The tool calls behind this answer, in the order they happened.
+    steps: AgentStep[];
+    // When it was written, as an ISO string: for timestamps and day dividers.
+    createdAt: string;
     // True while this answer is still being written.
     isStreaming: boolean;
+    // The viewer stopped this answer.
+    isStopped: boolean;
 };
 
 export type UseAgentConversationResult = {
@@ -25,6 +51,10 @@ export type UseAgentConversationResult = {
     error: Error | null;
     threadUuid: string | null;
     ask: (prompt: string) => Promise<void>;
+    // Ask the last question again, after an error or a stop.
+    retry: () => Promise<void>;
+    // Open a conversation this token may read, and continue it.
+    openThread: (threadUuid: string) => Promise<void>;
     stop: () => void;
     // Forget the conversation and start a new thread on the next question.
     reset: () => void;
@@ -39,6 +69,7 @@ type SavedThread = {
         status?: 'idle' | 'pending' | 'error';
         errorMessage?: string | null;
         artifacts?: AgentArtifact[] | null;
+        createdAt?: string;
     }[];
 };
 
@@ -48,6 +79,29 @@ type StreamEvent = {
     type?: string;
     delta?: string;
     data?: { message?: string };
+    // Tool calls: one id through start, input and output.
+    toolCallId?: string;
+    toolName?: string;
+    title?: string;
+    input?: unknown;
+    output?: unknown;
+};
+
+/**
+ * What a tool returned, as text. Most tools answer `{ result: "```csv…```" }`;
+ * the fences are for a chat window, so they come off here.
+ */
+const toolOutputText = (output: unknown): string => {
+    const value =
+        typeof output === 'string'
+            ? output
+            : output &&
+                typeof output === 'object' &&
+                'result' in output &&
+                typeof (output as { result: unknown }).result === 'string'
+              ? (output as { result: string }).result
+              : JSON.stringify(output, null, 2);
+    return (value ?? '').replace(/```\w*\n?/g, '').trim();
 };
 
 const parseEvent = (line: string): StreamEvent | null => {
@@ -83,12 +137,28 @@ export const useAgentConversation = (
     const [threadUuid, setThreadUuid] = useState<string | null>(null);
     const threadRef = useRef<string | null>(null);
     const abortRef = useRef<AbortController | null>(null);
+    const lastPromptRef = useRef<string | null>(null);
 
     const stop = useCallback(() => {
         abortRef.current?.abort();
         abortRef.current = null;
         setIsStreaming(false);
         setStatus(null);
+        setMessages((current) =>
+            current.map((message) =>
+                message.isStreaming
+                    ? {
+                          ...message,
+                          isStreaming: false,
+                          isStopped: true,
+                          steps: message.steps.map((step) => ({
+                              ...step,
+                              isRunning: false,
+                          })),
+                      }
+                    : message,
+            ),
+        );
     }, []);
 
     const reset = useCallback(() => {
@@ -99,8 +169,86 @@ export const useAgentConversation = (
         setError(null);
     }, [stop]);
 
+    // Everything the hook needs to talk to this agent, in one place.
+    const connect = useCallback(() => {
+        if (!token || !projectUuid) return null;
+        return {
+            client: createLightdashApiClient({
+                instanceUrl,
+                projectUuid,
+                auth: { type: 'embedToken' as const, token },
+                fetch: configFetch,
+            }),
+            base: `/api/v1/projects/${projectUuid}/aiAgents/${agentUuid}/threads`,
+        };
+    }, [agentUuid, configFetch, instanceUrl, projectUuid, token]);
+
+    /**
+     * A conversation that already exists, as its messages: the questions, the
+     * answers, and the charts the agent made. The next question continues it.
+     */
+    const openThread = useCallback(
+        async (uuid: string) => {
+            const connection = connect();
+            if (!connection) {
+                setError(new Error('A token and a projectUuid are required'));
+                return;
+            }
+            const { client, base } = connection;
+            abortRef.current?.abort();
+            const controller = new AbortController();
+            abortRef.current = controller;
+            setError(null);
+            try {
+                const saved = await client.request<SavedThread>({
+                    path: `${base}/${uuid}`,
+                    signal: controller.signal,
+                });
+                const messages = await Promise.all(
+                    (saved.messages ?? []).map(async (message) => {
+                        const charts = await Promise.all(
+                            (message.artifacts ?? []).map((artifact) =>
+                                client
+                                    .request<AgentArtifact>({
+                                        path: `${base.replace('/threads', '')}/artifacts/${artifact.artifactUuid}/versions/${artifact.versionUuid}`,
+                                        signal: controller.signal,
+                                    })
+                                    .catch(() => artifact),
+                            ),
+                        );
+                        return {
+                            id: message.uuid,
+                            role: message.role,
+                            text: message.message ?? '',
+                            charts: charts.filter((chart) => chart.chartConfig),
+                            steps: [],
+                            createdAt:
+                                message.createdAt ?? new Date().toISOString(),
+                            isStreaming: false,
+                            isStopped: false,
+                        } satisfies AgentMessage;
+                    }),
+                );
+                threadRef.current = uuid;
+                setThreadUuid(uuid);
+                setMessages(messages);
+            } catch (reason: unknown) {
+                if (controller.signal.aborted) return;
+                setError(
+                    reason instanceof Error
+                        ? reason
+                        : new Error('That conversation could not be opened'),
+                );
+            } finally {
+                if (abortRef.current === controller) abortRef.current = null;
+            }
+        },
+        [connect],
+    );
+
     const ask = useCallback(
         async (prompt: string) => {
+            lastPromptRef.current = prompt;
             if (!token || !projectUuid) {
                 setError(new Error('A token and a projectUuid are required'));
                 return;
@@ -120,14 +268,20 @@ export const useAgentConversation = (
                     role: 'user',
                     text: prompt,
                     charts: [],
+                    steps: [],
+                    createdAt: new Date().toISOString(),
                     isStreaming: false,
+                    isStopped: false,
                 },
                 {
                     id: answerId,
                     role: 'assistant',
                     text: '',
                     charts: [],
+                    steps: [],
+                    createdAt: new Date().toISOString(),
                     isStreaming: true,
+                    isStopped: false,
                 },
             ]);
 
@@ -190,25 +344,88 @@ export const useAgentConversation = (
                         unfinished + decoder.decode(value, { stream: true })
                     ).split('\n');
                     unfinished = lines.pop() ?? '';
+                    const updateAnswer = (
+                        update: (message: AgentMessage) => AgentMessage,
+                    ) =>
+                        setMessages((current) =>
+                            current.map((message) =>
+                                message.id === answerId
+                                    ? update(message)
+                                    : message,
+                            ),
+                        );
+                    const updateStep = (
+                        id: string,
+                        update: (step: AgentStep) => AgentStep,
+                    ) =>
+                        updateAnswer((message) => ({
+                            ...message,
+                            steps: message.steps.map((step) =>
+                                step.id === id ? update(step) : step,
+                            ),
+                        }));
+
                     lines.forEach((line) => {
                         const event = parseEvent(line);
                         if (!event) return;
                         if (event.type === 'text-delta' && event.delta) {
                             text += event.delta;
                             setStatus(null);
-                            setMessages((current) =>
-                                current.map((message) =>
-                                    message.id === answerId
-                                        ? { ...message, text }
-                                        : message,
-                                ),
-                            );
+                            updateAnswer((message) => ({ ...message, text }));
                         }
                         if (
                             event.type === 'data-step-progress' &&
                             event.data?.message
                         ) {
                             setStatus(event.data.message);
+                        }
+                        // A tool call arrives in three parts: it starts, its
+                        // arguments complete, then it returns.
+                        if (event.type === 'tool-input-start') {
+                            const toolName = event.toolName ?? '';
+                            const id = event.toolCallId ?? toolName;
+                            if (!id) return;
+                            const label = event.title ?? toolName;
+                            setStatus(label);
+                            updateAnswer((message) =>
+                                message.steps.some((step) => step.id === id)
+                                    ? message
+                                    : {
+                                          ...message,
+                                          steps: [
+                                              ...message.steps,
+                                              {
+                                                  id,
+                                                  toolName,
+                                                  label,
+                                                  input: null,
+                                                  output: null,
+                                                  isRunning: true,
+                                              },
+                                          ],
+                                      },
+                            );
+                        }
+                        if (
+                            event.type === 'tool-input-available' &&
+                            event.toolCallId
+                        ) {
+                            const { input } = event;
+                            updateStep(event.toolCallId, (step) => ({
+                                ...step,
+                                input: input ?? null,
+                            }));
+                        }
+                        if (
+                            event.type === 'tool-output-available' &&
+                            event.toolCallId
+                        ) {
+                            const output = toolOutputText(event.output);
+                            updateStep(event.toolCallId, (step) => ({
+                                ...step,
+                                output: output || step.output,
+                                isRunning: false,
+                            }));
                         }
                     });
                 }
@@ -248,6 +465,10 @@ export const useAgentConversation = (
                                   charts: charts.filter(
                                       (chart) => chart.chartConfig,
                                   ),
+                                  steps: message.steps.map((step) => ({
+                                      ...step,
+                                      isRunning: false,
+                                  })),
                                   isStreaming: false,
                               }
                             : message,
@@ -277,6 +498,15 @@ export const useAgentConversation = (
         [agentUuid, configFetch, instanceUrl, projectUuid, token],
     );
 
+    /**
+     * The last question again. The turn that failed stays where it is, and
+     * the answer arrives under it as a new one.
+     */
+    const retry = useCallback(async () => {
+        const prompt = lastPromptRef.current;
+        if (prompt) await ask(prompt);
+    }, [ask]);
+
     return useMemo(
         () => ({
             messages,
@@ -285,9 +515,22 @@ export const useAgentConversation = (
             error,
             threadUuid,
             ask,
+            retry,
+            openThread,
             stop,
             reset,
         }),
-        [messages, status, isStreaming, error, threadUuid, ask, stop, reset],
+        [
+            messages,
+            status,
+            isStreaming,
+            error,
+            threadUuid,
+            ask,
+            retry,
+            openThread,
+            stop,
+            reset,
+        ],
     );
 };

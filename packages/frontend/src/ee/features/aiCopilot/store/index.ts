@@ -6,16 +6,19 @@ import { aiAgentThreadStreamSlice } from './aiAgentThreadStreamSlice';
 import { aiArtifactSlice } from './aiArtifactSlice';
 import { createIssueSlice } from './createIssueSlice';
 
-export const store = configureStore({
-    reducer: {
-        aiAgentThreadStream: aiAgentThreadStreamSlice.reducer,
-        aiAgentThreadMode: aiAgentThreadModeSlice.reducer,
-        aiAgentThreadElementRefs: aiAgentThreadElementRefsSlice.reducer,
-        aiArtifact: aiArtifactSlice.reducer,
-        aiAgentLauncher: aiAgentLauncherSlice.reducer,
-        createIssue: createIssueSlice.reducer,
-    },
-});
+export const createAiAgentStore = () =>
+    configureStore({
+        reducer: {
+            aiAgentThreadStream: aiAgentThreadStreamSlice.reducer,
+            aiAgentThreadMode: aiAgentThreadModeSlice.reducer,
+            aiAgentThreadElementRefs: aiAgentThreadElementRefsSlice.reducer,
+            aiArtifact: aiArtifactSlice.reducer,
+            aiAgentLauncher: aiAgentLauncherSlice.reducer,
+            createIssue: createIssueSlice.reducer,
+        },
+    });
+
+export const store = createAiAgentStore();
 
 export type AiAgentStoreState = ReturnType<typeof store.getState>;
 export type AiAgentStoreDispatch = typeof store.dispatch;

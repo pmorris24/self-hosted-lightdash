@@ -2,6 +2,7 @@ import type { AiAgentMessageAssistant } from '@lightdash/common';
 import { Box, Paper } from '@mantine/core';
 import { type FC } from 'react';
 import ErrorBoundary from '../../../../../features/errorBoundary/ErrorBoundary';
+import { embedContractClass } from '../../../embed/styles/embedClassContract';
 import { AiArtifactPanel } from './AiArtifactPanel';
 
 type AiArtifactInlineProps = {
@@ -36,14 +37,25 @@ export const AiArtifactInline: FC<AiArtifactInlineProps> = ({
 
     if (artifact.artifactType === 'dashboard') {
         return (
-            <Box h="800px" p={0}>
+            <Box
+                className={embedContractClass('ld-agent-chart')}
+                h="800px"
+                p={0}
+            >
                 {artifactJsx}
             </Box>
         );
     }
 
     return (
-        <Paper variant="dotted" p="xs" radius="md" h="400px" shadow={'none'}>
+        <Paper
+            className={embedContractClass('ld-agent-chart')}
+            variant="dotted"
+            p="xs"
+            radius="md"
+            h="400px"
+            shadow={'none'}
+        >
             {artifactJsx}
         </Paper>
     );

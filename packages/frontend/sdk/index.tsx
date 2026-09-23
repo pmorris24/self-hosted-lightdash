@@ -4,6 +4,8 @@ import '@mantine/dates/styles.css';
 import '@mantine/tiptap/styles.css';
 import '../src/styles/global.css';
 import './styles/sdk.css';
+import './styles/agent.css';
+import './styles/agentParts.css';
 import {
     assertUnreachable,
     ChartType,
@@ -13,6 +15,7 @@ import {
     type EmbedDashboard as EmbedDashboardType,
     type LanguageMap,
     type SavedChart,
+    type SdkAgentFeatures,
     type SdkUiOverrides,
     type UiStringKey,
 } from '@lightdash/common';
@@ -29,6 +32,7 @@ import {
     useState,
     type FC,
     type PropsWithChildren,
+    type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { MemoryRouter, Route, Routes } from 'react-router';
@@ -55,10 +59,54 @@ import FullscreenProvider from '../src/providers/Fullscreen/FullscreenProvider';
 import MantineProvider from '../src/providers/MantineProvider';
 import { PortalTargetContext } from '../src/providers/PortalTarget/PortalTargetContext';
 import ReactQueryProvider from '../src/providers/ReactQuery/ReactQueryProvider';
-import { unregisterEmbedInstance } from '../src/utils/embedInstance';
 import ThirdPartyServicesProvider from '../src/providers/ThirdPartyServicesProvider';
 import TrackingProvider from '../src/providers/Tracking/TrackingProvider';
+import { unregisterEmbedInstance } from '../src/utils/embedInstance';
 import { setToInMemoryStorage } from '../src/utils/inMemoryStorage';
+import { type AgentAnswer } from './ai/agentApi';
+import {
+    agentChartTranslator,
+    type AgentArtifact,
+    type AgentChartProps,
+    type AgentFramedChartProps,
+} from './ai/agentChartTranslator';
+import { AgentChat, type AgentLayout } from './ai/AgentChat';
+import { AgentInsights } from './ai/AgentInsights';
+import { agentRoute } from './ai/agentRoute';
+import {
+    agentThemeVariables,
+    mergeAgentThemes,
+    type AgentThemeSettings,
+} from './ai/agentTheme';
+import {
+    AgentChartCard,
+    AgentComposer,
+    AgentPaneHeader,
+    AgentSelect,
+    AgentStatus,
+    AgentStepRow,
+    AgentSuggestion,
+    AgentSurface,
+    AgentToolbar,
+    AgentTranscript,
+    AgentTurn,
+    AgentWelcome,
+    agentHighlightJson,
+    agentMarkdown,
+    agentStepLabel,
+    type AgentComposerProps,
+    type AgentOption,
+    type AgentSurfaceProps,
+    type AgentTurnProps,
+} from './ai/parts';
+import { useAgentAnswer, type UseAgentAnswerResult } from './ai/useAgentAnswer';
+import {
+    useAgentConversation,
+    type AgentMessage,
+    type AgentStep,
+    type UseAgentConversationResult,
+} from './ai/useAgentConversation';
+import { useAgentSuggestions } from './ai/useAgentSuggestions';
 import {
     createLightdashApiClient,
     decodeContentType,
@@ -78,7 +126,6 @@ import {
     type ListAiAgentThreadsOptions,
     type ListContentOptions,
 } from './api';
-import { DataApp, DataAppComponent } from './DataApp';
 import { ComposedDashboard } from './composed/ComposedDashboard';
 import {
     addFilter,
@@ -88,6 +135,24 @@ import {
     replaceFilter,
 } from './composed/filters';
 import { createDefaultLayout } from './composed/layout';
+import { dashboardModelToComposed } from './composed/model';
+import {
+    type ComposedDashboardChangeEvent,
+    type ComposedDashboardProps,
+    type ComposedDashboardResult,
+    type ComposedLayout,
+    type ComposedWidget,
+    type ComposedWidgetState,
+    type UseComposedDashboardOptions,
+} from './composed/types';
+import { useComposedDashboard } from './composed/useComposedDashboard';
+import {
+    SdkConnectionContext,
+    SdkConnectionProvider,
+    useLightdashConfig,
+    type SdkConnection,
+    type SdkProviderProps,
+} from './connection';
 import { resolveColumns } from './data/adapter';
 import {
     buildChartConfig,
@@ -108,6 +173,7 @@ import {
     type DataOptions,
     type DataRow,
 } from './data/types';
+import { DataApp, DataAppComponent } from './DataApp';
 import {
     ContextMenu,
     type ContextMenuItem,
@@ -126,55 +192,10 @@ import {
     useJumpToDashboard,
     type JumpToDashboardTarget,
 } from './drilldown/useJumpToDashboard';
-import { AgentInsights } from './ai/AgentInsights';
-import { type AgentAnswer } from './ai/agentApi';
 import {
-    useAgentAnswer,
-    type UseAgentAnswerResult,
-} from './ai/useAgentAnswer';
-import { useAgentSuggestions } from './ai/useAgentSuggestions';
-import { useAgentConversation } from './ai/useAgentConversation';
-import {
-    agentChartTranslator,
-    type AgentArtifact,
-    type AgentChartProps,
-    type AgentChartWidgetProps,
-} from './ai/agentChartTranslator';
-import { LoadingOverlay } from './helpers/LoadingOverlay';
-import {
-    formatDate,
-    formatNumber,
-    formatRows,
-    getDefaultDateFormat,
-    type DateGranularity,
-} from './helpers/formatting';
-import {
-    createLinearGradient,
-    createRadialGradient,
-    GradientDirections,
-    isGradient,
-    isLinearGradient,
-    isRadialGradient,
-    type Gradient,
-    type GradientStop,
-    type LinearGradient,
-    type RadialGradient,
-} from './helpers/gradients';
-import { useSyncedState } from './helpers/useSyncedState';
-import { useLightdashTheme, type LightdashTheme } from './theme/themeContext';
-import { ThemeProvider } from './theme/ThemeProvider';
-import { CustomWidgetsProvider } from './widgets/customWidgets';
-import {
-    useCustomWidgets,
-    useOptionalCustomWidgets,
-    type CustomWidgetComponent,
-    type CustomWidgetProps,
-} from './widgets/customWidgetsContext';
-import {
-    WidgetFrame,
-    type WidgetFrameProps,
-    type WidgetStyleOptions,
-} from './widgets/WidgetFrame';
+    FilterTileContent,
+    type FilterTileFieldProps,
+} from './filters/FilterTileContent';
 import {
     LightdashFrame,
     type LightdashFrameEvent,
@@ -182,41 +203,15 @@ import {
     type LightdashFrameOptions,
 } from './frame/LightdashFrame';
 import {
-    FilterTileContent,
-    type FilterTileFieldProps,
-} from './filters/FilterTileContent';
-import { dashboardModelToComposed } from './composed/model';
-import {
-    chartModelTranslator,
-    defaultDataOptions,
-    type ChartModelDataChartWidgetProps,
-    type ChartModelDataChartProps,
-    type ChartModelDataPivotTableProps,
-    type ChartModelDataTableProps,
-    type ChartModelPivotTableWidgetProps,
-    type ChartModelChartProps,
-    type ChartModelChartWidgetProps,
-    type ChartModelQueryParams,
-    type ChartModelWidgetProps,
-} from './model/chartModelTranslator';
-import { useComposedDashboard } from './composed/useComposedDashboard';
-import {
-    SdkConnectionContext,
-    SdkConnectionProvider,
-    useLightdashConfig,
-    type SdkConnection,
-    type SdkProviderProps,
-} from './connection';
-import {
-    filterFactory,
-    type LightdashDateFilterSettings,
-    type LightdashFilterGroup,
-    type LightdashFilterOperator,
-    type LightdashFilterRule,
-    type LightdashFilterValue,
-    type LightdashSimpleFilter,
-    type LightdashUnitOfTime,
-} from './model/queryFilters';
+    formatDate,
+    formatNumber,
+    formatRows,
+    getDefaultDateFormat,
+    type DateGranularity,
+} from './helpers/formatting';
+import {} from './helpers/gradients';
+import { LoadingOverlay } from './helpers/LoadingOverlay';
+import { useSyncedState } from './helpers/useSyncedState';
 import {
     useDashboardModel,
     useExploreFields,
@@ -233,15 +228,41 @@ import {
     type UseChartQueryResult,
 } from './hooks';
 import {
-    type ComposedDashboardChangeEvent,
-    type ComposedDashboardProps,
-    type ComposedDashboardResult,
-    type ComposedLayout,
-    type ComposedWidget,
-    type ComposedWidgetState,
-    type UseComposedDashboardOptions,
-} from './composed/types';
+    chartModelTranslator,
+    defaultDataOptions,
+    type ChartModelChartProps,
+    type ChartModelDataChartProps,
+    type ChartModelDataPivotTableProps,
+    type ChartModelDataTableProps,
+    type ChartModelFrame,
+    type ChartModelQueryParams,
+    type ChartModelWidgetProps,
+} from './model/chartModelTranslator';
+import {
+    filterFactory,
+    type LightdashDateFilterSettings,
+    type LightdashFilterGroup,
+    type LightdashFilterOperator,
+    type LightdashFilterRule,
+    type LightdashFilterValue,
+    type LightdashSimpleFilter,
+    type LightdashUnitOfTime,
+} from './model/queryFilters';
 import { SDK_SCOPE_CLASS } from './styles/scope.json';
+import { useLightdashTheme, type LightdashTheme } from './theme/themeContext';
+import { ThemeProvider } from './theme/ThemeProvider';
+import { CustomWidgetsProvider } from './widgets/customWidgets';
+import {
+    useCustomWidgets,
+    useOptionalCustomWidgets,
+    type CustomWidgetComponent,
+    type CustomWidgetProps,
+} from './widgets/customWidgetsContext';
+import {
+    WidgetFrame,
+    type WidgetFrameProps,
+    type WidgetStyleOptions,
+} from './widgets/WidgetFrame';
 const LIGHTDASH_SDK_INSTANCE_URL_LOCAL_STORAGE_KEY =
     '__lightdash_sdk_instance_url';
 const LIGHTDASH_SDK_VERSION_LOCAL_STORAGE_KEY = '__lightdash_sdk_version';
@@ -262,19 +283,19 @@ type BaseProps = {
 
 type DashboardProps = Omit<BaseProps, 'instanceUrl' | 'token'> &
     ConnectionProps & {
-    // The dashboard to show. The token decides what a viewer may read, so
-    // this only makes page code explicit; a mismatch is reported, not served.
-    id?: string;
-    paletteUuid?: string;
-    isEditMode?: boolean;
-    onEditModeChange?: (isEditMode: boolean) => void;
-};
+        // The dashboard to show. The token decides what a viewer may read, so
+        // this only makes page code explicit; a mismatch is reported, not served.
+        id?: string;
+        paletteUuid?: string;
+        isEditMode?: boolean;
+        onEditModeChange?: (isEditMode: boolean) => void;
+    };
 
 type DashboardBuilderProps = DashboardProps & {
     onDashboardReady?: (dashboard: EmbedDashboardType) => void;
 };
 
-type ChartProps = Omit<
+type SavedChartProps = Omit<
     BaseProps,
     'filters' | 'onExplore' | 'instanceUrl' | 'token'
 > &
@@ -288,6 +309,13 @@ type ChartProps = Omit<
         onSelect?: (selection: SdkChartSelection) => void;
     };
 
+/**
+ * A saved chart by its id, drawn by the Lightdash renderer. Add `frame` for
+ * a title bar and border; the frame takes the chart's own name and
+ * description from Lightdash unless you set them.
+ */
+type ChartProps = SavedChartProps & { frame?: FrameOptions };
+
 type AiAgentProps = Omit<
     BaseProps,
     | 'contentOverrides'
@@ -298,10 +326,44 @@ type AiAgentProps = Omit<
     | 'token'
 > &
     ConnectionProps & {
-    agentUuid: string;
-    onThreadChange?: (options: { threadUuid: string }) => void;
-    threadUuid?: string;
-};
+        agentUuid: string;
+        onThreadChange?: (options: { threadUuid: string }) => void;
+        threadUuid?: string;
+        /** Initial prompt chips for inline embeds when the API has no suggestions. */
+        suggestedQuestions?: string[];
+        /**
+         * `inline` (the default) renders Lightdash's own agent into the host's
+         * page, where the page's style options reach it. `iframe` keeps it in a
+         * frame of its own, isolated from the page's styles.
+         */
+        render?: 'inline' | 'iframe';
+        /**
+         * Which of the product's two agent surfaces to render. `panel` (the
+         * default) is the small panel that opens beside a dashboard: a title bar,
+         * the agent's mark and description, its connections and pinned context,
+         * and the compact composer. `page` is the full-page agent, with its
+         * suggested questions and the agent and model pickers. The iframe always
+         * renders the page.
+         */
+        layout?: AgentLayout;
+        // What the conversation looks like, over the `agent` section of the
+        // surrounding theme. The iframe cannot take these.
+        styleOptions?: AgentThemeSettings;
+        /**
+         * Which parts of the agent to render: its header, avatar, description,
+         * integrations, pinned context, suggested questions, attachments. Every
+         * one it does not mention stays on, so an embed that says nothing gets
+         * the agent as the product ships it. The iframe cannot take these.
+         */
+        features?: SdkAgentFeatures;
+        /**
+         * Your own mark, shown wherever the agent shows its avatar — the empty
+         * panel and the embedded header. It is called with the size in pixels the
+         * agent has reserved there, so one mark serves both. The iframe cannot
+         * take it.
+         */
+        avatar?: (options: { size: number }) => ReactNode;
+    };
 
 type MetricsCatalogProps = Omit<
     BaseProps,
@@ -394,7 +456,8 @@ const useContentToken = (
                 : Promise.resolve(pageToken);
         exchange.then(
             (token) => {
-                if (isCurrent) setState({ key: requestKey, token, error: null });
+                if (isCurrent)
+                    setState({ key: requestKey, token, error: null });
             },
             (error: unknown) => {
                 if (isCurrent) {
@@ -677,8 +740,12 @@ const SdkProviders: FC<
         theme?: 'light' | 'dark';
         projectUuid?: string;
         instanceUrl?: string;
+        // A piece that brings its own routes — the agent, whose pages read
+        // the agent and the thread from the path — says where the memory
+        // router starts, and matches the path itself.
+        initialRoute?: string;
     }>
-> = ({ children, styles, theme, projectUuid, instanceUrl }) => {
+> = ({ children, styles, theme, projectUuid, instanceUrl, initialRoute }) => {
     const colorScheme = theme ?? 'light';
     const rootRef = useRef<HTMLDivElement>(null);
     const getRootElement = useCallback(() => rootRef.current ?? undefined, []);
@@ -723,14 +790,19 @@ const SdkProviders: FC<
         }),
         [fontFamily, portalId],
     );
-    const route = projectUuid ? `/projects/${projectUuid}` : '/';
-    const routedChildren = projectUuid ? (
-        <Routes>
-            <Route path="/projects/:projectUuid/*" element={<>{children}</>} />
-        </Routes>
-    ) : (
-        children
-    );
+    const route =
+        initialRoute ?? (projectUuid ? `/projects/${projectUuid}` : '/');
+    const routedChildren =
+        !initialRoute && projectUuid ? (
+            <Routes>
+                <Route
+                    path="/projects/:projectUuid/*"
+                    element={<>{children}</>}
+                />
+            </Routes>
+        ) : (
+            children
+        );
 
     return (
         <>
@@ -748,57 +820,59 @@ const SdkProviders: FC<
             )}
             <ReactQueryProvider embedInstanceId={instanceId}>
                 <EmbedInstanceContext.Provider value={embedInstance}>
-                <MantineProvider
-                    themeOverride={themeOverride}
-                    notificationsLimit={0}
-                    forceColorScheme={colorScheme}
-                    cssVariablesSelector={`.${instanceClass}`}
-                    getRootElement={getRootElement}
-                    syncBodyColorMode={false}
-                >
-                    <div
-                        ref={rootRef}
-                        className={embedContractClass(
-                            'ld-sdk-root',
-                            SDK_SCOPE_CLASS,
-                            instanceClass,
-                        )}
+                    <MantineProvider
+                        themeOverride={themeOverride}
+                        notificationsLimit={0}
+                        forceColorScheme={colorScheme}
+                        cssVariablesSelector={`.${instanceClass}`}
+                        getRootElement={getRootElement}
+                        syncBodyColorMode={false}
                     >
-                        <PortalTargetContext.Provider value={`#${portalId}`}>
-                            <ModalsProvider>
-                                <AppProvider>
-                                    <FullscreenProvider enabled={false}>
-                                        <ThirdPartyServicesProvider
-                                            enabled={false}
-                                        >
-                                            <ErrorBoundary
-                                                wrapper={{ mt: '4xl' }}
+                        <div
+                            ref={rootRef}
+                            className={embedContractClass(
+                                'ld-sdk-root',
+                                SDK_SCOPE_CLASS,
+                                instanceClass,
+                            )}
+                        >
+                            <PortalTargetContext.Provider
+                                value={`#${portalId}`}
+                            >
+                                <ModalsProvider>
+                                    <AppProvider>
+                                        <FullscreenProvider enabled={false}>
+                                            <ThirdPartyServicesProvider
+                                                enabled={false}
                                             >
-                                                <MemoryRouter
-                                                    initialEntries={[route]}
+                                                <ErrorBoundary
+                                                    wrapper={{ mt: '4xl' }}
                                                 >
-                                                    <TrackingProvider
-                                                        enabled={true}
+                                                    <MemoryRouter
+                                                        initialEntries={[route]}
                                                     >
-                                                        <AbilityProvider>
-                                                            <ChartColorMappingContextProvider>
-                                                                <ActiveJobProvider>
-                                                                    {
-                                                                        routedChildren
-                                                                    }
-                                                                </ActiveJobProvider>
-                                                            </ChartColorMappingContextProvider>
-                                                        </AbilityProvider>
-                                                    </TrackingProvider>
-                                                </MemoryRouter>
-                                            </ErrorBoundary>
-                                        </ThirdPartyServicesProvider>
-                                    </FullscreenProvider>
-                                </AppProvider>
-                            </ModalsProvider>
-                        </PortalTargetContext.Provider>
-                    </div>
-                </MantineProvider>
+                                                        <TrackingProvider
+                                                            enabled={true}
+                                                        >
+                                                            <AbilityProvider>
+                                                                <ChartColorMappingContextProvider>
+                                                                    <ActiveJobProvider>
+                                                                        {
+                                                                            routedChildren
+                                                                        }
+                                                                    </ActiveJobProvider>
+                                                                </ChartColorMappingContextProvider>
+                                                            </AbilityProvider>
+                                                        </TrackingProvider>
+                                                    </MemoryRouter>
+                                                </ErrorBoundary>
+                                            </ThirdPartyServicesProvider>
+                                        </FullscreenProvider>
+                                    </AppProvider>
+                                </ModalsProvider>
+                            </PortalTargetContext.Provider>
+                        </div>
+                    </MantineProvider>
                 </EmbedInstanceContext.Provider>
             </ReactQueryProvider>
         </>
@@ -1175,7 +1249,7 @@ const ChartContent: FC<{
     );
 };
 
-const Chart: FC<ChartProps> = ({
+const BareChart: FC<SavedChartProps> = ({
     contentOverrides,
     uiOverrides,
     id,
@@ -1190,10 +1264,14 @@ const Chart: FC<ChartProps> = ({
         styles,
         theme,
     } = useSdkConnection(connectionProps);
-    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise, {
-        type: 'chart',
-        savedChartUuid: id,
-    });
+    const tokenContext = useEmbedTokenContext(
+        instanceUrl,
+        tokenOrTokenPromise,
+        {
+            type: 'chart',
+            savedChartUuid: id,
+        },
+    );
 
     if (!tokenContext) {
         return null;
@@ -1236,7 +1314,49 @@ const Chart: FC<ChartProps> = ({
     );
 };
 
-const AiAgent: FC<AiAgentProps> = ({
+/** A saved chart in a frame titled with the chart's own name. */
+const FramedChart: FC<SavedChartProps & { frame: FrameOptions }> = ({
+    frame,
+    ...rest
+}) => {
+    const { token: tokenOrTokenPromise, instanceUrl } = useSdkConnection(rest);
+    const tokenContext = useEmbedTokenContext(
+        instanceUrl,
+        tokenOrTokenPromise,
+        { type: 'chart', savedChartUuid: rest.id },
+    );
+    const needsModel =
+        frame.title === undefined || frame.description === undefined;
+    const model = useChartModel(
+        { chartUuid: rest.id },
+        {
+            enabled: !!tokenContext && needsModel,
+            config: {
+                instanceUrl,
+                projectUuid: tokenContext?.projectUuid,
+                auth: tokenContext
+                    ? { type: 'embedToken', token: tokenContext.token }
+                    : undefined,
+            },
+        },
+    );
+    return (
+        <WidgetFrame
+            {...frame}
+            title={frame.title ?? model.data?.name}
+            description={
+                frame.description ?? model.data?.description ?? undefined
+            }
+        >
+            <BareChart {...rest} />
+        </WidgetFrame>
+    );
+};
+
+const Chart: FC<ChartProps> = ({ frame, ...rest }) =>
+    frame ? <FramedChart frame={frame} {...rest} /> : <BareChart {...rest} />;
+
+const AiAgentFrame: FC<AiAgentProps> = ({
     agentUuid,
     onThreadChange,
     threadUuid,
@@ -1308,6 +1428,73 @@ const AiAgent: FC<AiAgentProps> = ({
         />
     );
 };
+
+const AiAgentInline: FC<AiAgentProps> = ({
+    agentUuid,
+    onThreadChange,
+    threadUuid,
+    styleOptions,
+    features,
+    avatar,
+    suggestedQuestions,
+    layout = 'panel',
+    ...connectionProps
+}) => {
+    const {
+        token: tokenOrTokenPromise,
+        instanceUrl,
+        styles,
+        theme,
+    } = useSdkConnection(connectionProps);
+    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
+
+    if (!tokenContext) {
+        return null;
+    }
+
+    return (
+        <SdkProviders
+            instanceUrl={instanceUrl}
+            projectUuid={tokenContext.projectUuid}
+            styles={styles}
+            theme={theme}
+            initialRoute={agentRoute(
+                tokenContext.projectUuid,
+                agentUuid,
+                threadUuid,
+            )}
+        >
+            <EmbedProvider
+                embedToken={tokenContext.token}
+                projectUuid={tokenContext.projectUuid}
+                agentFeatures={features}
+                agentAvatar={avatar}
+                agentSuggestedQuestions={suggestedQuestions}
+            >
+                <AgentChat
+                    styleOptions={styleOptions}
+                    onThreadChange={onThreadChange}
+                    layout={layout}
+                    projectUuid={tokenContext.projectUuid}
+                    agentUuid={agentUuid}
+                    threadUuid={threadUuid}
+                />
+            </EmbedProvider>
+        </SdkProviders>
+    );
+};
+
+/**
+ * Lightdash's AI agent, with the UI it has in the product: rendered into the
+ * host's page, so the page's style options reach the conversation. The older
+ * isolated frame is still there as `render="iframe"`.
+ */
+const AiAgent: FC<AiAgentProps> = ({ render = 'inline', ...props }) =>
+    render === 'iframe' ? (
+        <AiAgentFrame {...props} />
+    ) : (
+        <AiAgentInline {...props} />
+    );
 
 const MetricsCatalog: FC<MetricsCatalogProps> = (connectionProps) => {
     const {
@@ -1512,6 +1699,22 @@ const FiltersPanel: FC<FiltersPanelProps> = ({
     </FilterPiece>
 );
 
+/**
+ * The frame Lightdash draws around a chart or a table: a title bar and a
+ * border. Leave `frame` off and the piece renders bare, for a page that
+ * brings its own card.
+ */
+type FrameOptions = {
+    title?: string;
+    description?: string;
+    height?: number | string;
+    styleOptions?: WidgetStyleOptions;
+};
+
+/** Renders `children` inside the shared frame, or bare when there is none. */
+const withFrame = (frame: FrameOptions | undefined, children: ReactNode) =>
+    frame ? <WidgetFrame {...frame}>{children}</WidgetFrame> : <>{children}</>;
+
 type DataPieceProps = FilterPieceProps & {
     rows: DataRow[];
     columns?: DataColumn[];
@@ -1531,7 +1734,12 @@ type DataChartCommonProps = FilterPieceProps & {
     onSelect?: (selection: DataChartSelection) => void;
 };
 
-/** A chart from rows the host supplies, from the query SDK or anywhere else. */
+/**
+ * A chart's props say where its data comes from, and the component name says
+ * it too: `Chart` takes a saved chart's id, `QueryChart` runs a governed
+ * query, `DataChart` takes rows the page already has. No component takes two
+ * shapes and guesses which one it got.
+ */
 type RowsDataChartProps = DataChartCommonProps & {
     rows: DataRow[];
     columns?: DataColumn[];
@@ -1547,12 +1755,6 @@ type QueryDataChartProps = DataChartCommonProps &
     ChartModelQueryParams & {
         dataOptions?: DataOptions;
     };
-
-type DataChartProps = RowsDataChartProps | QueryDataChartProps;
-
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
-    ? Omit<T, K>
-    : never;
 
 const RowsDataChart: FC<RowsDataChartProps> = ({
     rows: inputRows,
@@ -1666,8 +1868,6 @@ type RowsDataTableProps = DataTableCommonProps & {
 /** A table that runs its own governed query. */
 type QueryDataTableProps = DataTableCommonProps & ChartModelQueryParams;
 
-type DataTableProps = RowsDataTableProps | QueryDataTableProps;
-
 /** A table from rows that host code supplies. */
 const RowsDataTable: FC<RowsDataTableProps> = ({
     rows,
@@ -1750,18 +1950,19 @@ const QueryDataTable: FC<QueryDataTableProps> = ({
     );
 };
 
-/**
- * A table from either input: a governed query the table runs itself, or rows
- * the host already has.
- */
-const DataTable: FC<DataTableProps> = (props) =>
-    'exploreName' in props ? (
-        <QueryDataTable {...props} />
-    ) : (
-        <RowsDataTable {...props} />
-    );
+/** A table from rows the page already has, optionally in a frame. */
+type DataTableProps = RowsDataTableProps & { frame?: FrameOptions };
 
-type DataPivotTableProps = DataPieceProps & {
+const DataTable: FC<DataTableProps> = ({ frame, ...rest }) =>
+    withFrame(frame, <RowsDataTable {...rest} />);
+
+/** A table that runs a governed query, optionally in a frame. */
+type QueryTableProps = QueryDataTableProps & { frame?: FrameOptions };
+
+const QueryTable: FC<QueryTableProps> = ({ frame, ...rest }) =>
+    withFrame(frame, <QueryDataTable {...rest} />);
+
+type PivotTableProps = DataPieceProps & {
     // Columns that stay as row headers.
     rowFields: string[];
     // The column whose values become the table's columns.
@@ -1770,8 +1971,7 @@ type DataPivotTableProps = DataPieceProps & {
     value: string | string[];
 };
 
-/** A pivot table from long rows: row headers, and one column per value. */
-const DataPivotTable: FC<DataPivotTableProps> = ({
+const PivotTable: FC<PivotTableProps> = ({
     rows,
     columns,
     format,
@@ -1810,16 +2010,12 @@ const DataPivotTable: FC<DataPivotTableProps> = ({
     );
 };
 
-type TypedDataChartProps = DistributiveOmit<DataChartProps, 'chartType'>;
-
-type QueryChartProps = QueryDataChartProps;
-
 /**
  * A chart that runs its own governed query. The props are a query on one
  * explore and the look to draw it with, the shape `chartModelTranslator`
  * returns for a saved chart, so a page can change either before it renders.
  */
-const QueryChart: FC<QueryChartProps> = ({
+const QueryDataChart: FC<QueryDataChartProps> = ({
     exploreName,
     dimensions,
     metrics,
@@ -1863,7 +2059,8 @@ const QueryChart: FC<QueryChartProps> = ({
             isLoading={pieceProps.isLoading || !query.data}
             chartType={chartType}
             dataOptions={
-                dataOptions ?? defaultDataOptions(chartType, dimensions, metrics)
+                dataOptions ??
+                defaultDataOptions(chartType, dimensions, metrics)
             }
             styleOptions={styleOptions}
             onSelect={onSelect}
@@ -1872,162 +2069,34 @@ const QueryChart: FC<QueryChartProps> = ({
 };
 
 /**
- * One chart component for both inputs: a governed query (`exploreName`,
- * `dimensions`, `metrics`) that the chart runs itself, or `rows` the host
- * already has. Drawn by the Lightdash renderer either way.
+ * A chart drawn from rows the page already has, from the query SDK or
+ * anywhere else. Add `frame` for Lightdash's title bar and border; leave it
+ * off and the chart is bare markup in your layout.
  */
-const DataChart: FC<DataChartProps> = (props) =>
-    'exploreName' in props ? (
-        <QueryChart {...props} />
-    ) : (
-        <RowsDataChart {...props} />
-    );
+type DataChartProps = RowsDataChartProps & { frame?: FrameOptions };
 
-type WidgetBaseProps = Omit<WidgetFrameProps, 'children'>;
+const DataChart: FC<DataChartProps> = ({ frame, ...rest }) =>
+    withFrame(frame, <RowsDataChart {...rest} />);
 
-type SavedChartWidgetProps = WidgetBaseProps & ChartProps;
+/** A chart that runs a governed query, optionally in a frame. */
+type QueryChartProps = QueryDataChartProps & { frame?: FrameOptions };
 
-/**
- * A chart widget's `styleOptions` carries both: the frame reads its own keys
- * (header, border, padding and the rest) and the chart reads its own (legend,
- * axes, labels, colours). Neither side sees the other's.
- */
-export type ChartWidgetStyleOptions = WidgetStyleOptions &
-    DataChartStyleOptions;
+const QueryChart: FC<QueryChartProps> = ({ frame, ...rest }) =>
+    withFrame(frame, <QueryDataChart {...rest} />);
 
-type WidgetChartStyleProps = { styleOptions?: ChartWidgetStyleOptions };
-type DataChartWidgetProps = WidgetBaseProps &
-    DataChartProps &
-    WidgetChartStyleProps;
-type QueryChartWidgetProps = WidgetBaseProps &
-    QueryChartProps &
-    WidgetChartStyleProps;
-
-/**
- * One widget for every chart input: a saved chart by `id`, a governed query,
- * or `rows` the host already has.
- */
-type ChartWidgetProps = SavedChartWidgetProps | DataChartWidgetProps;
-
-const splitWidgetProps = <T extends WidgetBaseProps>({
-    title,
-    description,
-    styleOptions,
-    height,
-    ...rest
-}: T) => ({ frame: { title, description, styleOptions, height }, rest });
-
-/**
- * A saved chart by its id, in a frame. The frame takes the chart's name and
- * description from Lightdash unless the host sets them.
- */
-const SavedChartWidget: FC<SavedChartWidgetProps> = (props) => {
-    const { frame, rest } = splitWidgetProps(props);
-    const { token: tokenOrTokenPromise, instanceUrl } = useSdkConnection(rest);
-    const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise, {
-        type: 'chart',
-        savedChartUuid: rest.id,
-    });
-    const needsModel =
-        frame.title === undefined || frame.description === undefined;
-    const model = useChartModel(
-        { chartUuid: rest.id },
-        {
-            enabled: !!tokenContext && needsModel,
-            config: {
-                instanceUrl,
-                projectUuid: tokenContext?.projectUuid,
-                auth: tokenContext
-                    ? { type: 'embedToken', token: tokenContext.token }
-                    : undefined,
-            },
-        },
-    );
-    return (
-        <WidgetFrame
-            {...frame}
-            title={frame.title ?? model.data?.name}
-            description={
-                frame.description ?? model.data?.description ?? undefined
-            }
-        >
-            <Chart {...rest} />
-        </WidgetFrame>
-    );
+type CustomWidgetFrameProps = Pick<DataPieceProps, 'rows' | 'columns'> & {
+    frame?: FrameOptions;
+    // A type registered through `useCustomWidgets` or the provider.
+    customWidgetType: string;
+    options?: Record<string, unknown>;
+    onSelect?: DataChartProps['onSelect'];
 };
-
-/**
- * A chart in a titled frame, from any input: a saved chart by `id`, a
- * governed query, or host rows.
- */
-const ChartWidget: FC<ChartWidgetProps> = (props) =>
-    'id' in props ? (
-        <SavedChartWidget {...props} />
-    ) : (
-        <DataChartWidget {...props} />
-    );
-
-/** A chart from a query or from host rows, in a titled frame. */
-const DataChartWidget: FC<DataChartWidgetProps> = ({
-    title,
-    description,
-    styleOptions,
-    height,
-    ...rest
-}) => (
-    <WidgetFrame
-        title={title}
-        description={description}
-        styleOptions={styleOptions}
-        height={height}
-    >
-        <DataChart {...rest} styleOptions={styleOptions} />
-    </WidgetFrame>
-);
-
-/** A chart that runs its own query, in a titled frame. */
-const QueryChartWidget: FC<QueryChartWidgetProps> = ({
-    title,
-    description,
-    styleOptions,
-    height,
-    ...rest
-}) => (
-    <WidgetFrame
-        title={title}
-        description={description}
-        styleOptions={styleOptions}
-        height={height}
-    >
-        <QueryChart {...rest} styleOptions={styleOptions} />
-    </WidgetFrame>
-);
-
-type PivotTableWidgetProps = WidgetBaseProps & DataPivotTableProps;
-
-/** A pivot table from host rows, in a titled frame. */
-const PivotTableWidget: FC<PivotTableWidgetProps> = (props) => {
-    const { frame, rest } = splitWidgetProps(props);
-    return (
-        <WidgetFrame {...frame}>
-            <DataPivotTable {...rest} />
-        </WidgetFrame>
-    );
-};
-
-type CustomWidgetFrameProps = WidgetBaseProps &
-    Pick<DataPieceProps, 'rows' | 'columns'> & {
-        // A type registered through `useCustomWidgets` or the provider.
-        customWidgetType: string;
-        options?: Record<string, unknown>;
-        onSelect?: DataChartProps['onSelect'];
-    };
 
 type WidgetProps =
-    | ({ widgetType: 'chart' } & SavedChartWidgetProps)
-    | ({ widgetType: 'dataChart' } & DataChartWidgetProps)
-    | ({ widgetType: 'queryChart' } & QueryChartWidgetProps)
-    | ({ widgetType: 'pivot' } & PivotTableWidgetProps)
+    | ({ widgetType: 'chart' } & ChartProps)
+    | ({ widgetType: 'dataChart' } & DataChartProps)
+    | ({ widgetType: 'queryChart' } & QueryChartProps)
+    | ({ widgetType: 'pivot' } & DataPivotTableProps)
     | ({ widgetType: 'custom' } & CustomWidgetFrameProps);
 
 /**
@@ -2039,45 +2108,50 @@ const Widget: FC<WidgetProps> = (props) => {
     switch (props.widgetType) {
         case 'chart': {
             const { widgetType: _chart, ...chartProps } = props;
-            return <SavedChartWidget {...chartProps} />;
+            return <Chart {...chartProps} />;
         }
         case 'dataChart': {
             const { widgetType: _dataChart, ...dataChartProps } = props;
-            return <DataChartWidget {...dataChartProps} />;
+            return <DataChart {...dataChartProps} />;
         }
         case 'queryChart': {
             const { widgetType: _queryChart, ...queryChartProps } = props;
-            return <QueryChartWidget {...queryChartProps} />;
+            return <QueryChart {...queryChartProps} />;
         }
         case 'pivot': {
             const { widgetType: _pivot, ...pivotProps } = props;
-            return <PivotTableWidget {...pivotProps} />;
+            return <DataPivotTable {...pivotProps} />;
         }
         case 'custom': {
-            const { frame, rest } = splitWidgetProps(props);
+            const { widgetType: _custom, frame, ...rest } = props;
             const Custom = registry?.getCustomWidget(rest.customWidgetType);
-            return (
-                <WidgetFrame {...frame}>
-                    {Custom ? (
-                        <Custom
-                            rows={rest.rows}
-                            columns={resolveColumns(rest.rows, rest.columns)}
-                            options={rest.options ?? {}}
-                            onSelect={rest.onSelect}
-                        />
-                    ) : (
-                        <p role="alert" style={{ margin: 0, padding: 14 }}>
-                            No custom widget is registered for “
-                            {rest.customWidgetType}”.
-                        </p>
-                    )}
-                </WidgetFrame>
+            return withFrame(
+                frame,
+                Custom ? (
+                    <Custom
+                        rows={rest.rows}
+                        columns={resolveColumns(rest.rows, rest.columns)}
+                        options={rest.options ?? {}}
+                        onSelect={rest.onSelect}
+                    />
+                ) : (
+                    <p role="alert" style={{ margin: 0, padding: 14 }}>
+                        No custom widget is registered for “
+                        {rest.customWidgetType}”.
+                    </p>
+                ),
             );
         }
         default:
             return assertUnreachable(props, 'Unknown widget type');
     }
 };
+
+/** A pivot table from long rows: row headers, and one column per value. */
+type DataPivotTableProps = PivotTableProps & { frame?: FrameOptions };
+
+const DataPivotTable: FC<DataPivotTableProps> = ({ frame, ...rest }) =>
+    withFrame(frame, <PivotTable {...rest} />);
 
 type DrilldownChartProps = Omit<DataPieceProps, 'rows' | 'columns'> & {
     exploreName: string;
@@ -2212,26 +2286,33 @@ const DrilldownChart: FC<DrilldownChartProps> = ({
     );
 };
 
-const typedDataChart = (chartType: DataChartType, displayName: string) => {
-    const Component: FC<TypedDataChartProps> = (props) => (
-        <DataChart {...props} chartType={chartType} />
+/**
+ * One chart component per chart type, each a `QueryChart` with its type
+ * fixed: the governed query is the short path. To draw rows you already
+ * have, name the type on `DataChart` instead.
+ */
+type TypedChartProps = Omit<QueryChartProps, 'chartType'>;
+
+const typedQueryChart = (chartType: DataChartType, displayName: string) => {
+    const Component: FC<TypedChartProps> = (props) => (
+        <QueryChart {...props} chartType={chartType} />
     );
     Component.displayName = displayName;
     return Component;
 };
 
-const BarChart = typedDataChart('bar', 'BarChart');
-const ColumnChart = typedDataChart('column', 'ColumnChart');
-const LineChart = typedDataChart('line', 'LineChart');
-const AreaChart = typedDataChart('area', 'AreaChart');
-const ScatterChart = typedDataChart('scatter', 'ScatterChart');
-const PieChart = typedDataChart('pie', 'PieChart');
-const FunnelChart = typedDataChart('funnel', 'FunnelChart');
-const KpiChart = typedDataChart('kpi', 'KpiChart');
-const TreemapChart = typedDataChart('treemap', 'TreemapChart');
-const GaugeChart = typedDataChart('gauge', 'GaugeChart');
-const SankeyChart = typedDataChart('sankey', 'SankeyChart');
-const MapChart = typedDataChart('map', 'MapChart');
+const BarChart = typedQueryChart('bar', 'BarChart');
+const ColumnChart = typedQueryChart('column', 'ColumnChart');
+const LineChart = typedQueryChart('line', 'LineChart');
+const AreaChart = typedQueryChart('area', 'AreaChart');
+const ScatterChart = typedQueryChart('scatter', 'ScatterChart');
+const PieChart = typedQueryChart('pie', 'PieChart');
+const FunnelChart = typedQueryChart('funnel', 'FunnelChart');
+const KpiChart = typedQueryChart('kpi', 'KpiChart');
+const TreemapChart = typedQueryChart('treemap', 'TreemapChart');
+const GaugeChart = typedQueryChart('gauge', 'GaugeChart');
+const SankeyChart = typedQueryChart('sankey', 'SankeyChart');
+const MapChart = typedQueryChart('map', 'MapChart');
 
 const dashboardHelpers = {
     addFilter,
@@ -2267,12 +2348,8 @@ const Lightdash = {
     CriteriaFilterTile,
     FiltersPanel,
     Widget,
-    ChartWidget,
-    SavedChartWidget,
-    DataChartWidget,
     QueryChart,
-    QueryChartWidget,
-    PivotTableWidget,
+    QueryTable,
     WidgetFrame,
     CustomWidgetsProvider,
     useCustomWidgets,
@@ -2280,6 +2357,23 @@ const Lightdash = {
     useLightdashTheme,
     LoadingOverlay,
     AgentInsights,
+    AgentSurface,
+    AgentPaneHeader,
+    AgentToolbar,
+    AgentSelect,
+    AgentStatus,
+    AgentWelcome,
+    AgentSuggestion,
+    AgentTranscript,
+    AgentTurn,
+    AgentStepRow,
+    AgentChartCard,
+    AgentComposer,
+    agentMarkdown,
+    agentHighlightJson,
+    agentStepLabel,
+    agentThemeVariables,
+    mergeAgentThemes,
     useAgentAnswer,
     useAgentConversation,
     agentChartTranslator,
@@ -2296,12 +2390,6 @@ const Lightdash = {
     formatNumber,
     formatRows,
     getDefaultDateFormat,
-    createLinearGradient,
-    createRadialGradient,
-    GradientDirections,
-    isGradient,
-    isLinearGradient,
-    isRadialGradient,
     LightdashFrame,
     ContextMenu,
     DrilldownChart,
@@ -2360,12 +2448,8 @@ export {
     CriteriaFilterTile,
     FiltersPanel,
     Widget,
-    ChartWidget,
-    SavedChartWidget,
-    DataChartWidget,
     QueryChart,
-    QueryChartWidget,
-    PivotTableWidget,
+    QueryTable,
     WidgetFrame,
     CustomWidgetsProvider,
     useCustomWidgets,
@@ -2373,6 +2457,23 @@ export {
     useLightdashTheme,
     LoadingOverlay,
     AgentInsights,
+    AgentSurface,
+    AgentPaneHeader,
+    AgentToolbar,
+    AgentSelect,
+    AgentStatus,
+    AgentWelcome,
+    AgentSuggestion,
+    AgentTranscript,
+    AgentTurn,
+    AgentStepRow,
+    AgentChartCard,
+    AgentComposer,
+    agentMarkdown,
+    agentHighlightJson,
+    agentStepLabel,
+    agentThemeVariables,
+    mergeAgentThemes,
     useAgentAnswer,
     useAgentConversation,
     agentChartTranslator,
@@ -2389,12 +2490,6 @@ export {
     formatNumber,
     formatRows,
     getDefaultDateFormat,
-    createLinearGradient,
-    createRadialGradient,
-    GradientDirections,
-    isGradient,
-    isLinearGradient,
-    isRadialGradient,
     LightdashFrame,
     ContextMenu,
     DrilldownChart,
@@ -2446,15 +2541,12 @@ export type {
     FiltersPanelProps,
     ContextMenuItem,
     ContextMenuSection,
-    ChartWidgetProps,
-    SavedChartWidgetProps,
-    DataChartWidgetProps,
+    FrameOptions,
     QueryChartProps,
-    QueryChartWidgetProps,
-    PivotTableWidgetProps,
+    QueryTableProps,
+    TypedChartProps,
     WidgetProps,
     ChartModelQueryParams,
-    ChartModelChartProps,
     DataChartStyleOptions,
     DataTableOptions,
     LightdashQueryFilter,
@@ -2465,12 +2557,11 @@ export type {
     LightdashFilterValue,
     LightdashUnitOfTime,
     LightdashDateFilterSettings,
-    ChartModelChartWidgetProps,
+    ChartModelChartProps,
     ChartModelDataChartProps,
     ChartModelDataTableProps,
     ChartModelDataPivotTableProps,
-    ChartModelDataChartWidgetProps,
-    ChartModelPivotTableWidgetProps,
+    ChartModelFrame,
     ChartModelWidgetProps,
     UseChartQueryArgs,
     UseChartQueryResult,
@@ -2479,18 +2570,24 @@ export type {
     CustomWidgetComponent,
     CustomWidgetProps,
     AgentAnswer,
+    AgentComposerProps,
+    AgentLayout,
+    AgentMessage,
+    AgentOption,
+    AgentStep,
+    AgentSurfaceProps,
+    AgentThemeSettings,
+    AgentTurnProps,
+    SdkAgentFeatures,
     UseAgentAnswerResult,
+    UseAgentConversationResult,
     AgentArtifact,
     AgentChartProps,
-    AgentChartWidgetProps,
+    AgentFramedChartProps,
     LightdashTheme,
     LightdashChartFields,
     LightdashChartModel,
     DateGranularity,
-    Gradient,
-    GradientStop,
-    LinearGradient,
-    RadialGradient,
     LightdashFrameEvent,
     LightdashFrameEventName,
     LightdashFrameOptions,

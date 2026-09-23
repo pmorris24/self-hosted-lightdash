@@ -1,7 +1,7 @@
 import { type AiAgent } from '@lightdash/common';
 import { Box, Group, Loader, Stack, Text, TextInput } from '@mantine/core';
 import { IconShare2 } from '@tabler/icons-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type FC, type ReactNode } from 'react';
 import {
     Navigate,
     Outlet,
@@ -9,6 +9,7 @@ import {
     useParams,
     useSearchParams,
 } from 'react-router';
+import { LightdashUserAvatar } from '../../../components/Avatar';
 import { GuidedTour } from '../../../components/common/GuidedTour';
 import MantineModal from '../../../components/common/MantineModal';
 import { ShareLinkButton } from '../../../components/common/ShareLinkButton';
@@ -42,6 +43,7 @@ import {
 } from '../../features/aiCopilot/hooks/useProjectAiAgents';
 import { store as aiAgentStore } from '../../features/aiCopilot/store';
 import { openPanel } from '../../features/aiCopilot/store/aiAgentLauncherSlice';
+import useEmbed from '../../providers/Embed/useEmbed';
 import styles from './AgentPage.module.css';
 
 type NavigateFromAgentChatOptions = {
@@ -49,12 +51,36 @@ type NavigateFromAgentChatOptions = {
     title?: string | null;
 };
 
+/**
+ * The title bar an embedded agent carries: the agent's mark and its name, the
+ * same pair the product's own panel leads with. A host page turns it off when
+ * its own chrome already says which agent this is.
+ */
+const EmbeddedAgentHeader: FC<{
+    agent: AiAgent;
+    avatar?: (options: { size: number }) => ReactNode;
+}> = ({ agent, avatar }) => (
+    <Group gap="xs" wrap="nowrap" align="center">
+        {avatar?.({ size: 28 }) ?? (
+            <LightdashUserAvatar
+                size="sm"
+                name={agent.name}
+                src={agent.imageUrl}
+            />
+        )}
+        <Text size="sm" fw={600}>
+            {agent.name}
+        </Text>
+    </Group>
+);
+
 const AgentPage = () => {
     const { agentUuid, threadUuid } = useParams();
     const projectUuid = useProjectUuid();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const isEmbed = isEmbedAiAgentRoute();
+    const { agentFeatures, agentAvatar } = useEmbed();
     const canManageAgents = useAiAgentPermission({
         action: 'manage',
         projectUuid,
@@ -251,7 +277,14 @@ const AgentPage = () => {
                 )
             }
             Header={
-                !isEmbed && agentsList && agentsList.length > 0 ? (
+                isEmbed ? (
+                    agentFeatures.header ? (
+                        <EmbeddedAgentHeader
+                            agent={agent}
+                            avatar={agentAvatar}
+                        />
+                    ) : undefined
+                ) : agentsList && agentsList.length > 0 ? (
                     <AgentPageHeader
                         leftSection={
                             <AgentSelector

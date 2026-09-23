@@ -1,5 +1,6 @@
 import Lightdash, {
     useLightdashAiAgentThreads,
+    type AgentThemeSettings,
     type LightdashAiAgentThread,
     type LightdashApiClientConfig,
     type ListAiAgentThreadsOptions,
@@ -36,6 +37,22 @@ const sourceUrl = getRepoSourceUrl(
 const defaultAiAgentEmbedUrl = import.meta.env.VITE_AI_AGENT_EMBED_URL ?? '';
 const latestAiAgentThreadStorageKey = 'lightdash:sdk-test-app:ai-agent-thread';
 const EMPTY_AI_AGENT_THREADS: LightdashAiAgentThread[] = [];
+
+// A host's own look, worn by Lightdash's agent UI: the whole chat first, then
+// the parts of it. Anything left out keeps what the product uses. Put this on
+// `Lightdash.ThemeProvider` as `theme={{ agent: HOST_AGENT_THEME }}` to style
+// every agent on the page at once.
+const HOST_AGENT_THEME: AgentThemeSettings = {
+    accentColor: '#7262FF',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    primaryFontSize: 13,
+    borderColor: '#E7E6EE',
+    borderRadius: 14,
+    body: { maxWidth: 820 },
+    userMessages: { backgroundColor: 'rgba(114, 98, 255, 0.08)' },
+    input: { borderRadius: 18, focus: { outlineColor: '#7262FF' } },
+    suggestions: { hover: { backgroundColor: '#F4F2FF' } },
+};
 
 const isJwtPayload = (payload: unknown): payload is JwtPayload => {
     if (typeof payload !== 'object' || payload === null) return false;
@@ -244,6 +261,8 @@ export function AiAgentExamplePage({ embedConfig }: AiAgentExamplePageProps) {
     );
     const defaultThreadUuid = aiAgentEmbedConfig.threadUuid ?? '';
     const [latestThreadUuid, setLatestThreadUuid] = useState('');
+    const [renderMode, setRenderMode] = useState<'inline' | 'iframe'>('inline');
+    const [isStyled, setIsStyled] = useState(true);
     const [resumeThreadUuid, setResumeThreadUuid] = useState(defaultThreadUuid);
     const remountKey = `${defaultAiAgentEmbedUrl || embedConfig.remountKey}:${
         resumeThreadUuid || 'new'
@@ -360,6 +379,37 @@ export function AiAgentExamplePage({ embedConfig }: AiAgentExamplePageProps) {
                             >
                                 Use latest
                             </button>
+                            <select
+                                aria-label="How the agent is rendered"
+                                value={renderMode}
+                                onChange={(event) =>
+                                    setRenderMode(
+                                        event.target.value === 'iframe'
+                                            ? 'iframe'
+                                            : 'inline',
+                                    )
+                                }
+                            >
+                                <option value="inline">In the page</option>
+                                <option value="iframe">In an iframe</option>
+                            </select>
+                            <label
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={isStyled}
+                                    disabled={renderMode === 'iframe'}
+                                    onChange={(event) =>
+                                        setIsStyled(event.target.checked)
+                                    }
+                                />
+                                Host style options
+                            </label>
                         </div>
                         <div style={threadHistoryStyle}>
                             <select
@@ -393,7 +443,7 @@ export function AiAgentExamplePage({ embedConfig }: AiAgentExamplePageProps) {
                         {hasRequiredConfig ? (
                             <div style={dashboardContainerStyle}>
                                 <Lightdash.AiAgent
-                                    key={`${remountKey}:${agentUuid}`}
+                                    key={`${remountKey}:${agentUuid}:${renderMode}`}
                                     instanceUrl={instanceUrl}
                                     token={token}
                                     agentUuid={agentUuid}
@@ -401,6 +451,12 @@ export function AiAgentExamplePage({ embedConfig }: AiAgentExamplePageProps) {
                                         resumeThreadUuid.trim() || undefined
                                     }
                                     onThreadChange={handleThreadChange}
+                                    render={renderMode}
+                                    styleOptions={
+                                        isStyled
+                                            ? HOST_AGENT_THEME
+                                            : undefined
+                                    }
                                 />
                             </div>
                         ) : (

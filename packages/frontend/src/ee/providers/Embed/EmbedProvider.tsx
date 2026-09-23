@@ -1,5 +1,7 @@
 import {
+    resolveSdkAgentFeatures,
     type CreateEmbedJwt,
+    type SdkAgentFeatures,
     type LanguageMap,
     type SavedChart,
     type SdkUiOverrides,
@@ -14,6 +16,7 @@ import {
     useRef,
     useState,
     type FC,
+    type ReactNode,
 } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { useAccount } from '../../../hooks/user/useAccount';
@@ -56,6 +59,9 @@ type Props = {
     paletteUuid?: string;
     contentOverrides?: LanguageMap;
     uiOverrides?: SdkUiOverrides;
+    agentFeatures?: SdkAgentFeatures;
+    agentSuggestedQuestions?: string[];
+    agentAvatar?: (options: { size: number }) => ReactNode;
     embedHeaders?: Record<string, string>;
     onExplore?: (options: EmbedExploreOptions) => void;
     onSelect?: (selection: SdkChartSelection) => void;
@@ -98,6 +104,9 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
     paletteUuid,
     contentOverrides,
     uiOverrides,
+    agentFeatures,
+    agentAvatar,
+    agentSuggestedQuestions,
     onExplore,
     onSelect,
     onBackToDashboard,
@@ -242,6 +251,9 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
             // Single resolution point for UI-string overrides; a future
             // direct-embed transport adds its source here.
             t: (input: UiStringKey) => uiOverrides?.[input],
+            agentFeatures: resolveSdkAgentFeatures(agentFeatures),
+            agentAvatar,
+            agentSuggestedQuestions,
             projectUuid: embed?.projectUuid || projectUuid,
             content: embedJwtPayload?.content,
             writeActions: embedJwtPayload?.writeActions,
@@ -273,6 +285,9 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
         paletteUuid,
         contentOverrides,
         uiOverrides,
+        agentFeatures,
+        agentAvatar,
+        agentSuggestedQuestions,
         onExplore,
         onSelect,
         handleChartSaved,

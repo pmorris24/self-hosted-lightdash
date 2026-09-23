@@ -1,4 +1,5 @@
 import {
+    type SdkAgentFeatures,
     type AnonymousAccount,
     type CreateEmbedJwt,
     type CreateSavedChartVersion,
@@ -7,6 +8,7 @@ import {
     type UiStringKey,
     type UUID,
 } from '@lightdash/common';
+import { type ReactNode } from 'react';
 import { type SdkChartSelection } from '../../features/embed/EmbedChart/types';
 import { type SdkFilter } from '../../features/embed/EmbedDashboard/types';
 import { type ChartSavedAction } from '../../features/embed/events/types';
@@ -54,6 +56,13 @@ export interface EmbedContext {
     onSelect?: (selection: SdkChartSelection) => void;
     // Returns the SDK uiOverrides value for a UI-string key, if any
     t: (input: UiStringKey) => string | undefined;
+    // Which parts of the agent a host page asked for. Everything it does not
+    // mention stays on, so an embed that says nothing gets the whole agent.
+    agentFeatures: Required<SdkAgentFeatures>;
+    // A host page's own mark, drawn at the size the agent reserves for it,
+    // shown wherever the agent would show its avatar.
+    agentSuggestedQuestions?: string[];
+    agentAvatar?: (options: { size: number }) => ReactNode;
     // The function to call when the user clicks "Back to dashboard" from an Explore
     onBackToDashboard?: () => void;
     // Called after a chart is created or updated from an embedded Explore. The

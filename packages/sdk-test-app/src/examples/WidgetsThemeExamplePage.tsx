@@ -127,9 +127,11 @@ function GovernedWidgets({ tokens }: { tokens: DevTokens }) {
             </p>
             <div style={gridStyle}>
                 <div style={{ height: 340 }} data-testid="saved-chart-widget">
-                    <Lightdash.ChartWidget
-                        title={chart.name}
-                        description="A saved chart in a widget frame"
+                    <Lightdash.Chart
+                        frame={{
+                            title: chart.name,
+                            description: 'A saved chart in a widget frame',
+                        }}
                         id={chart.uuid}
                         instanceUrl={tokens.instanceUrl}
                         token={chart.token}

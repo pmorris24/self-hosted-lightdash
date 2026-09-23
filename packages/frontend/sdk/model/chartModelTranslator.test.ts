@@ -13,7 +13,9 @@ const chart: LightdashChartModel = {
     tableCalculations: ['orders_share'],
     limit: 500,
     sorts: [{ field: 'orders_year', descending: true }],
-    filters: [{ field: 'orders_status', operator: 'notEquals', values: ['void'] }],
+    filters: [
+        { field: 'orders_status', operator: 'notEquals', values: ['void'] },
+    ],
 };
 
 const result: LightdashQueryRows = {
@@ -47,7 +49,11 @@ describe('chartModelTranslator', () => {
             dimensions: ['orders_year', 'orders_status'],
             metrics: ['orders_revenue'],
             filters: [
-                { field: 'orders_status', operator: 'notEquals', values: ['void'] },
+                {
+                    field: 'orders_status',
+                    operator: 'notEquals',
+                    values: ['void'],
+                },
             ],
             sorts: [{ field: 'orders_year', descending: true }],
             limit: 10,
@@ -95,15 +101,15 @@ describe('chartModelTranslator', () => {
     });
 
     it('pivots on the last dimension and refuses a single dimension', () => {
-        expect(chartModelTranslator.toDataPivotTableProps(chart, result)).toEqual(
-            {
-                rows: result.rows,
-                columns: result.columns,
-                rowFields: ['orders_year'],
-                columnField: 'orders_status',
-                value: ['orders_revenue'],
-            },
-        );
+        expect(
+            chartModelTranslator.toDataPivotTableProps(chart, result),
+        ).toEqual({
+            rows: result.rows,
+            columns: result.columns,
+            rowFields: ['orders_year'],
+            columnField: 'orders_status',
+            value: ['orders_revenue'],
+        });
         expect(
             chartModelTranslator.toDataPivotTableProps(
                 { ...chart, dimensions: ['orders_year'] },
@@ -113,8 +119,12 @@ describe('chartModelTranslator', () => {
     });
 
     it('titles widgets with the chart name and picks pivot for tables', () => {
-        expect(chartModelTranslator.toDataChartWidgetProps(chart, result)).toMatchObject(
-            { title: 'Revenue by status', description: 'Per year', chartType: 'column' },
+        expect(chartModelTranslator.toWidgetProps(chart, result)).toMatchObject(
+            {
+                widgetType: 'dataChart',
+                frame: { title: 'Revenue by status', description: 'Per year' },
+                chartType: 'column',
+            },
         );
         expect(
             chartModelTranslator.toWidgetProps(
@@ -142,7 +152,11 @@ describe('chartModelTranslator', () => {
             dimensions: ['orders_year', 'orders_status'],
             metrics: ['orders_revenue'],
             filters: [
-                { field: 'orders_status', operator: 'notEquals', values: ['void'] },
+                {
+                    field: 'orders_status',
+                    operator: 'notEquals',
+                    values: ['void'],
+                },
             ],
             sorts: [{ field: 'orders_year', descending: true }],
             limit: 500,
@@ -179,10 +193,9 @@ describe('chartModelTranslator', () => {
         expect(chartModelTranslator.toChartProps(table).chartType).toBe(
             'column',
         );
-        expect(chartModelTranslator.toChartWidgetProps(chart)).toEqual({
+        expect(chartModelTranslator.toFrame(chart)).toEqual({
             title: 'Revenue by status',
             description: 'Per year',
-            ...chartModelTranslator.toChartProps(chart),
         });
     });
 });

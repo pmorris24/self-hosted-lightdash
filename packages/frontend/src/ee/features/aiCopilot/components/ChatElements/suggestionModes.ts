@@ -1,3 +1,5 @@
+import { type AgentSuggestion } from '@lightdash/common';
+
 type AgentSuggestionModeArgs = {
     disabled: boolean;
     isMinimalMode: boolean;
@@ -29,4 +31,24 @@ export const getAgentSuggestionModes = ({
             !!latestAssistantMessageUuid &&
             canFetchSuggestions,
     };
+};
+
+export const resolveAgentSuggestionChips = (
+    chips: AgentSuggestion[] | undefined,
+    initialQuestions: string[] | undefined,
+): AgentSuggestion[] => {
+    if (chips?.length) return chips;
+    return (initialQuestions ?? [])
+        .filter((label) => label.trim())
+        .map((label) => ({
+            kind: 'prompt',
+            label,
+            tool: 'generateVisualization',
+            defaults: {
+                explore: null,
+                dimensions: [],
+                metrics: [],
+                timeframe: null,
+            },
+        }));
 };

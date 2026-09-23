@@ -24,7 +24,9 @@ export type AgentArtifact = {
                 exploreName: string;
                 dimensions?: string[] | null;
                 metrics?: string[] | null;
-                sorts?: { fieldId: string; descending?: boolean | null }[] | null;
+                sorts?:
+                    | { fieldId: string; descending?: boolean | null }[]
+                    | null;
                 limit?: number | null;
             };
         };
@@ -41,9 +43,9 @@ export type AgentChartProps = ChartModelQueryParams & {
     dataOptions: DataOptions;
 };
 
-export type AgentChartWidgetProps = AgentChartProps & {
-    title: string;
-    description?: string;
+/** An agent's chart with the frame it wrote the title for. */
+export type AgentFramedChartProps = AgentChartProps & {
+    frame: { title: string; description?: string };
 };
 
 // The agent names chart types in its own words; these are ours.
@@ -63,8 +65,9 @@ const VIZ_TYPES: Record<string, DataChartType> = {
 };
 
 /** The chart type the agent asked for, in the SDK's vocabulary. */
-export const toChartType = (vizType: string | null | undefined): DataChartType =>
-    (vizType && VIZ_TYPES[vizType]) || 'column';
+export const toChartType = (
+    vizType: string | null | undefined,
+): DataChartType => (vizType && VIZ_TYPES[vizType]) || 'column';
 
 /**
  * Props for a chart, from an agent's artifact: the governed query the agent
@@ -116,12 +119,14 @@ export const toChartProps = (
 };
 
 /** The same, with the title and description the agent wrote, for a frame. */
-export const toChartWidgetProps = (
+export const toFramedChartProps = (
     artifact: AgentArtifact,
     overrides: Partial<AgentChartProps> = {},
-): AgentChartWidgetProps => ({
-    title: artifact.title,
-    ...(artifact.description ? { description: artifact.description } : {}),
+): AgentFramedChartProps => ({
+    frame: {
+        title: artifact.title,
+        ...(artifact.description ? { description: artifact.description } : {}),
+    },
     ...toChartProps(artifact, overrides),
 });
 
@@ -133,5 +138,5 @@ export const toChartWidgetProps = (
 export const agentChartTranslator = {
     toChartType,
     toChartProps,
-    toChartWidgetProps,
+    toFramedChartProps,
 };

@@ -17,6 +17,8 @@ import { type FC } from 'react';
 import { useNavigate } from 'react-router';
 import { LightdashUserAvatar } from '../../../../../components/Avatar';
 import MantineIcon from '../../../../../components/common/MantineIcon';
+import useEmbed from '../../../../providers/Embed/useEmbed';
+import { isEmbedAiAgentRoute } from '../../hooks/aiAgentRouting';
 import { useAiRouterConfig } from '../../hooks/useAiRouter';
 import { closePanel, openPanel } from '../../store/aiAgentLauncherSlice';
 import {
@@ -53,6 +55,10 @@ export const PanelHeader: FC<Props> = ({
 }) => {
     const dispatch = useAiAgentStoreDispatch();
     const navigate = useNavigate();
+    // An embed has its own chrome: the host page decides whether the bar is
+    // there at all, and fullscreen and close belong to the product's launcher.
+    const isEmbed = isEmbedAiAgentRoute();
+    const { agentFeatures, agentAvatar } = useEmbed();
     const pendingContext = useAiAgentStoreSelector(
         (state) => state.aiAgentLauncher.pendingContext,
     );
@@ -64,6 +70,7 @@ export const PanelHeader: FC<Props> = ({
 
     const canSwitchAgent =
         showAgentSwitcher &&
+        !isEmbed &&
         threadId === null &&
         (agents.length > 1 || showAutoOption);
 
@@ -90,6 +97,8 @@ export const PanelHeader: FC<Props> = ({
         dispatch(closePanel());
         void navigate(target);
     };
+
+    if (isEmbed && !agentFeatures.header) return null;
 
     return (
         <div className={styles.panelHeader}>
@@ -189,19 +198,20 @@ export const PanelHeader: FC<Props> = ({
                     </Menu>
                 ) : showAgentIdentity ? (
                     <Group gap="xs" wrap="nowrap" className={styles.minWidth0}>
-                        {isAuto ? (
-                            <Avatar size="sm" color="ldGray" radius="xl">
-                                <Text size="10px" fw={600} c="dimmed">
-                                    AI
-                                </Text>
-                            </Avatar>
-                        ) : (
-                            <LightdashUserAvatar
-                                size="sm"
-                                name={agent?.name ?? 'AI'}
-                                src={agent?.imageUrl}
-                            />
-                        )}
+                        {agentAvatar?.({ size: 28 }) ??
+                            (isAuto ? (
+                                <Avatar size="sm" color="ldGray" radius="xl">
+                                    <Text size="10px" fw={600} c="dimmed">
+                                        AI
+                                    </Text>
+                                </Avatar>
+                            ) : (
+                                <LightdashUserAvatar
+                                    size="sm"
+                                    name={agent?.name ?? 'AI'}
+                                    src={agent?.imageUrl}
+                                />
+                            ))}
                         <Text
                             size="sm"
                             fw={500}
@@ -212,7 +222,11 @@ export const PanelHeader: FC<Props> = ({
                     </Group>
                 ) : null}
             </Group>
-            <Group gap="xs" wrap="nowrap">
+            <Group
+                gap="xs"
+                wrap="nowrap"
+                display={isEmbed ? 'none' : undefined}
+            >
                 <ActionIcon
                     size="sm"
                     onClick={handleExpand}

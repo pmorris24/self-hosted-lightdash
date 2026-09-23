@@ -50,6 +50,27 @@ const stripSvgrQuery = () => ({
     },
 });
 
+// `import url from '…/worker.js?worker&url'` is a Vite convention for a
+// bundled web worker. Rollup has no equivalent, and the app code that reaches
+// one from the SDK — the PR-diff highlighter behind the agent's review panels
+// — is never rendered to an embedded viewer. Resolve the import to an empty
+// URL so the bundle builds; a worker is only ever constructed from it on a
+// surface an embed cannot open.
+const VITE_WORKER_IMPORT = /\?worker(&url)?$/;
+const WORKER_STUB_PREFIX = '\0vite-worker-url:';
+
+const stubViteWorkerUrl = () => ({
+    name: 'stub-vite-worker-url',
+    resolveId(source) {
+        return VITE_WORKER_IMPORT.test(source)
+            ? `${WORKER_STUB_PREFIX}${source}`
+            : null;
+    },
+    load(id) {
+        return id.startsWith(WORKER_STUB_PREFIX) ? 'export default "";' : null;
+    },
+});
+
 // Quiet noisy "Module level directives cause errors when bundled" warnings
 // for `"use client"` in third-party deps — those directives are meaningful
 // to React server components but inert in our bundled SDK output.
@@ -120,6 +141,7 @@ const mainBuild = {
             },
         }),
         stripSvgrQuery(),
+        stubViteWorkerUrl(),
         svgr({ exportType: 'default' }),
         // Some transitive deps (pegjs, ajv, others) reference Node built-ins
         // like fs/path/url. These code paths are dead in a browser bundle,

@@ -3,6 +3,7 @@ import { Box, Button } from '@mantine/core';
 import { IconArrowUpRight } from '@tabler/icons-react';
 import { useEffect, useRef } from 'react';
 import MantineIcon from '../../../../../components/common/MantineIcon';
+import { embedContractClass } from '../../../embed/styles/embedClassContract';
 import styles from './AgentSuggestionChips.module.css';
 
 type Props = {
@@ -55,14 +56,18 @@ export const AgentSuggestionChips = ({
             className={`${styles.row} ${align === 'left' ? styles.rowLeft : ''}`}
         >
             {chips.map((chip, idx) => {
-                const classes = [styles.chip, styles.fadeIn];
-                if (chip.kind === 'navigate') classes.push(styles.navigateChip);
+                const className = embedContractClass(
+                    'ld-agent-suggestion',
+                    styles.chip,
+                    styles.fadeIn,
+                    chip.kind === 'navigate' && styles.navigateChip,
+                );
                 return (
                     <Button
                         key={chipKey(chip, idx)}
                         variant="default"
                         size="xs"
-                        className={classes.join(' ')}
+                        className={className}
                         style={{ ['--chip-idx' as string]: idx }}
                         leftSection={renderLeftIcon(chip)}
                         rightSection={renderRightIcon(

@@ -36,30 +36,27 @@ export type ChartModelDataPivotTableProps = ChartModelRowsProps & {
     value: string[];
 };
 
-type ChartModelFrameProps = {
+/** The title bar a saved chart gives a frame. */
+export type ChartModelFrame = {
     title: string;
     description?: string;
 };
 
-export type ChartModelDataChartWidgetProps = ChartModelFrameProps &
-    ChartModelDataChartProps;
-
-export type ChartModelPivotTableWidgetProps = ChartModelFrameProps &
-    ChartModelDataPivotTableProps;
-
 export type ChartModelWidgetProps =
-    | ({ widgetType: 'dataChart' } & ChartModelDataChartWidgetProps)
-    | ({ widgetType: 'pivot' } & ChartModelPivotTableWidgetProps);
+    | ({
+          widgetType: 'dataChart';
+          frame: ChartModelFrame;
+      } & ChartModelDataChartProps)
+    | ({
+          widgetType: 'pivot';
+          frame: ChartModelFrame;
+      } & ChartModelDataPivotTableProps);
 
-// Props for `Chart` and `ChartWidget`, from the model alone: the chart runs
-// the query itself.
+// Props for `Chart` from the model alone: the chart runs the query itself.
 export type ChartModelChartProps = ChartModelQueryParams & {
     chartType: DataChartType;
     dataOptions: DataOptions;
 };
-
-export type ChartModelChartWidgetProps = ChartModelFrameProps &
-    ChartModelChartProps;
 
 const CHART_KIND_TO_DATA_CHART_TYPE: Record<string, DataChartType> = {
     line: 'line',
@@ -144,7 +141,11 @@ export const defaultDataOptions = (
         case 'treemap':
             return { category, value: measures[0] ?? '' };
         case 'sankey':
-            return { source: category, target: second, value: measures[0] ?? '' };
+            return {
+                source: category,
+                target: second,
+                value: measures[0] ?? '',
+            };
         case 'bar':
         case 'column':
         case 'line':
@@ -185,8 +186,11 @@ export const toChartProps = (
     chart: LightdashChartModel,
     overrides: Partial<ChartModelChartProps> = {},
 ): ChartModelChartProps => {
-    const { chartType: chartTypeOverride, dataOptions, ...queryOverrides } =
-        overrides;
+    const {
+        chartType: chartTypeOverride,
+        dataOptions,
+        ...queryOverrides
+    } = overrides;
     const savedType = toDataChartType(chart.chartKind);
     return {
         ...toMetricQueryParams(chart, queryOverrides),
@@ -208,7 +212,8 @@ export const toDataChartProps = (
 ): ChartModelDataChartProps => ({
     rows: result.rows,
     columns: result.columns,
-    chartType: overrides.chartType ?? toDataChartType(chart.chartKind) ?? 'column',
+    chartType:
+        overrides.chartType ?? toDataChartType(chart.chartKind) ?? 'column',
     dataOptions: toDataOptions(chart, result.columns),
 });
 
@@ -243,27 +248,10 @@ export const toDataPivotTableProps = (
     };
 };
 
-const toFrameProps = (chart: LightdashChartModel): ChartModelFrameProps => ({
+/** The `frame` prop for a saved chart: its own name and description. */
+export const toFrame = (chart: LightdashChartModel): ChartModelFrame => ({
     title: chart.name,
     ...(chart.description ? { description: chart.description } : {}),
-});
-
-/** Props for `DataChartWidget`: the chart in a frame titled with its name. */
-export const toDataChartWidgetProps = (
-    chart: LightdashChartModel,
-    result: LightdashQueryRows,
-): ChartModelDataChartWidgetProps => ({
-    ...toFrameProps(chart),
-    ...toDataChartProps(chart, result),
-});
-
-/** Props for `ChartWidget`: the chart in a frame titled with its name. */
-export const toChartWidgetProps = (
-    chart: LightdashChartModel,
-    overrides: Partial<ChartModelChartProps> = {},
-): ChartModelChartWidgetProps => ({
-    ...toFrameProps(chart),
-    ...toChartProps(chart, overrides),
 });
 
 /**
@@ -277,10 +265,14 @@ export const toWidgetProps = (
     if (chart.chartKind === 'table') {
         const pivot = toDataPivotTableProps(chart, result);
         if (pivot) {
-            return { widgetType: 'pivot', ...toFrameProps(chart), ...pivot };
+            return { widgetType: 'pivot', frame: toFrame(chart), ...pivot };
         }
     }
-    return { widgetType: 'dataChart', ...toDataChartWidgetProps(chart, result) };
+    return {
+        widgetType: 'dataChart',
+        frame: toFrame(chart),
+        ...toDataChartProps(chart, result),
+    };
 };
 
 /**
@@ -294,8 +286,7 @@ export const chartModelTranslator = {
     toDataChartProps,
     toDataTableProps,
     toDataPivotTableProps,
-    toDataChartWidgetProps,
     toChartProps,
-    toChartWidgetProps,
+    toFrame,
     toWidgetProps,
 };

@@ -28,7 +28,10 @@ export const placeNewTilesInFlow = <T extends PlaceableTile>(
         tilesInTab.length > 0 ? Math.max(...tilesInTab.map((t) => t.y)) : 0;
     const bottomRow = tilesInTab.filter((tile) => tile.y === bottomRowY);
 
-    let x = bottomRow.reduce((edge, tile) => Math.max(edge, tile.x + tile.w), 0);
+    let x = bottomRow.reduce(
+        (edge, tile) => Math.max(edge, tile.x + tile.w),
+        0,
+    );
     let y = bottomRowY;
     let rowHeight = bottomRow.reduce(
         (height, tile) => Math.max(height, tile.h),

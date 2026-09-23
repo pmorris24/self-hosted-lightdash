@@ -25,12 +25,14 @@ import {
 import { createPath, useLocation, useNavigate } from 'react-router';
 import { LightdashUserAvatar } from '../../../../../components/Avatar';
 import useApp from '../../../../../providers/App/useApp';
+import useEmbed from '../../../../providers/Embed/useEmbed';
 import { findRetryableDeepResearchRun } from '../../deepResearch/deepResearchRegistry';
 import { runDeepResearchAgain } from '../../deepResearch/runAgain';
 import {
     type DeepResearchRunRegistration,
     type StartDeepResearchArgs,
 } from '../../deepResearch/types';
+import { isEmbedAiAgentRoute } from '../../hooks/aiAgentRouting';
 import { useAiAgentSqlModeAvailable } from '../../hooks/useAiAgentSqlModeAvailable';
 import { useDashboardPageContextCuration } from '../../hooks/useDashboardPageContextCuration';
 import {
@@ -319,6 +321,9 @@ const NewThreadPanel: FC<{
     const description = isAuto
         ? 'Routes each new question to the best-fit agent'
         : agent.description;
+    // Which parts of the panel this embed asked for, and the mark it brings.
+    // Everything stays on outside an embed.
+    const { agentFeatures: features, agentAvatar } = useEmbed();
 
     return (
         <div className={styles.panel} style={style}>
@@ -337,29 +342,31 @@ const NewThreadPanel: FC<{
                     gap="xs"
                     px="md"
                 >
-                    {isAuto ? (
-                        <Avatar size="lg" color="ldGray" radius="xl">
-                            <Text size="sm" fw={600} c="dimmed">
-                                AI
-                            </Text>
-                        </Avatar>
-                    ) : (
-                        <LightdashUserAvatar
-                            size="lg"
-                            name={agent.name}
-                            src={agent.imageUrl}
-                        />
-                    )}
+                    {features.avatar &&
+                        (agentAvatar?.({ size: 56 }) ??
+                            (isAuto ? (
+                                <Avatar size="lg" color="ldGray" radius="xl">
+                                    <Text size="sm" fw={600} c="dimmed">
+                                        AI
+                                    </Text>
+                                </Avatar>
+                            ) : (
+                                <LightdashUserAvatar
+                                    size="lg"
+                                    name={agent.name}
+                                    src={agent.imageUrl}
+                                />
+                            )))}
                     <Text size="sm" fw={500}>
                         {displayName}
                     </Text>
-                    {description && (
+                    {description && features.description && (
                         <Text size="xs" c="dimmed" ta="center" maw={360}>
                             {description}
                         </Text>
                     )}
                 </Stack>
-                {concreteAgent && (
+                {concreteAgent && features.integrations && (
                     <Stack px="md" pb="xs">
                         <AiAgentNewThreadMcpConnections
                             projectUuid={projectUuid}
@@ -368,23 +375,24 @@ const NewThreadPanel: FC<{
                         />
                     </Stack>
                 )}
-                {previewItemsWithPageContext.length > 0 && (
-                    <Stack gap="xxs" px="md" pb="xs">
-                        <Text size="xs" fw={600} c="dimmed" tt="uppercase">
-                            Pinned context
-                        </Text>
-                        <Group gap="xs" wrap="wrap">
-                            {previewItemsWithPageContext.map((item) => (
-                                <PinnedContextCard
-                                    key={getPromptContextItemKey(item)}
-                                    item={item}
-                                    projectUuid={projectUuid}
-                                    previewScope={null}
-                                />
-                            ))}
-                        </Group>
-                    </Stack>
-                )}
+                {features.pinnedContext &&
+                    previewItemsWithPageContext.length > 0 && (
+                        <Stack gap="xxs" px="md" pb="xs">
+                            <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+                                Pinned context
+                            </Text>
+                            <Group gap="xs" wrap="wrap">
+                                {previewItemsWithPageContext.map((item) => (
+                                    <PinnedContextCard
+                                        key={getPromptContextItemKey(item)}
+                                        item={item}
+                                        projectUuid={projectUuid}
+                                        previewScope={null}
+                                    />
+                                ))}
+                            </Group>
+                        </Stack>
+                    )}
                 {isPickingAgent && (
                     <LauncherAgentPicker
                         candidates={sortedCandidates}
@@ -536,8 +544,12 @@ const ExistingThreadPanel: FC<{
         isThreadPending ||
         startDeepResearch.isLoading,
     );
+    // An embedded viewer is an anonymous account, so a thread they just
+    // started never matches their user uuid: only Slack threads are read-only
+    // there, as on the thread page.
     const isInputDisabled =
-        thread?.createdFrom === 'slack' || !isThreadFromCurrentUser;
+        thread?.createdFrom === 'slack' ||
+        (!isEmbedAiAgentRoute() && !isThreadFromCurrentUser);
     const contentMentionItems = useMemo(
         () => contextItemsToContentMentionSuggestions(threadContext, 'thread'),
         [threadContext],

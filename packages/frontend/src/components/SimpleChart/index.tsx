@@ -18,6 +18,7 @@ import {
     useState,
     type FC,
 } from 'react';
+import { SDK_SCOPE_CLASS } from '../../../sdk/styles/scope.json';
 import useEchartsCartesianConfig from '../../hooks/echarts/useEchartsCartesianConfig';
 import {
     getDisabledLegendEntries,
@@ -113,17 +114,23 @@ const CANVAS_RENDERER_THRESHOLD = 500;
 const CSS_VAR_REGEX = /^var\((--[^,)]+)(?:,\s*(.+))?\)$/;
 
 /**
+ * Where the Mantine variables a chart reads are declared. In the app that is
+ * the page itself; in an SDK embed they live on the SDK's own root, so
+ * resolving against the page would give every colour its light-mode fallback.
+ */
+const cssVariableRoot = (): Element =>
+    document.querySelector(`.${SDK_SCOPE_CLASS}`) ?? document.documentElement;
+
+/**
  * Resolve a single CSS variable string to its computed value.
  * Falls back to the embedded fallback value if the variable isn't set.
  */
-const resolveCssVariable = (value: string): string => {
+const resolveCssVariable = (value: string, root: Element): string => {
     const match = value.match(CSS_VAR_REGEX);
     if (!match) return value;
 
     const [, varName, fallback] = match;
-    const computed = getComputedStyle(
-        document.documentElement,
-    ).getPropertyValue(varName);
+    const computed = getComputedStyle(root).getPropertyValue(varName);
     return computed.trim() || fallback?.trim() || value;
 };
 
@@ -131,20 +138,22 @@ const resolveCssVariable = (value: string): string => {
  * Recursively walk an object and resolve any CSS variable strings.
  * Used when switching to canvas renderer, which can't resolve CSS variables.
  */
-const resolveCssVariablesInOptions = <T,>(obj: T): T => {
+const resolveCssVariablesInOptions = <T,>(obj: T, root: Element): T => {
     if (obj === null || obj === undefined) return obj;
     if (typeof obj === 'string') {
-        return resolveCssVariable(obj) as unknown as T;
+        return resolveCssVariable(obj, root) as unknown as T;
     }
     if (Array.isArray(obj)) {
-        return obj.map(resolveCssVariablesInOptions) as unknown as T;
+        return obj.map((item) =>
+            resolveCssVariablesInOptions(item, root),
+        ) as unknown as T;
     }
     if (typeof obj === 'object') {
         const result: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(
             obj as Record<string, unknown>,
         )) {
-            result[key] = resolveCssVariablesInOptions(value);
+            result[key] = resolveCssVariablesInOptions(value, root);
         }
         return result as T;
     }
@@ -376,7 +385,10 @@ const SimpleChart: FC<SimpleChartProps> = memo(
             if (!eChartsOptions || opts.renderer !== 'canvas') {
                 return eChartsOptions;
             }
-            return resolveCssVariablesInOptions(eChartsOptions);
+            return resolveCssVariablesInOptions(
+                eChartsOptions,
+                cssVariableRoot(),
+            );
         }, [eChartsOptions, opts.renderer]);
 
         // Track whether we're currently in item-tooltip mode to avoid
