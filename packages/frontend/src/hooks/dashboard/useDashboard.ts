@@ -877,10 +877,12 @@ export const appendNewTilesToBottom = <T extends Pick<DashboardTile, 'y'>>(
         });
     const maxY =
         tilesY && tilesY.length > 0 ? Math.max.apply(Math, tilesY) : -1;
+    // `y` on a new tile is relative to the block being added, so a caller can
+    // lay several tiles out in rows and have the whole block land at the bottom
     const reorderedTiles = newTiles.map((tile) => ({
         ...tile,
-        y: maxY + 1,
-    })); //add to the bottom
+        y: maxY + 1 + tile.y,
+    }));
 
     return [...(existingTiles ?? []), ...reorderedTiles];
 };

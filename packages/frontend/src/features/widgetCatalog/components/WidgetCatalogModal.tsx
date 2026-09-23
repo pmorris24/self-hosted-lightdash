@@ -47,6 +47,7 @@ import {
     WidgetCatalogTab,
     type CatalogWidget,
 } from '../types';
+import { flowTilesIntoRows } from '../utils/tileLayout';
 import classes from './WidgetCatalog.module.css';
 import WidgetCatalogCard from './WidgetCatalogCard';
 import WidgetCatalogGrid from './WidgetCatalogGrid';
@@ -203,7 +204,7 @@ const WidgetCatalogModal: FC<Props> = ({
 
     const addWidgets = useCallback(
         (widgetsToAdd: CatalogWidget[]) => {
-            onAddTiles(widgetsToAdd.map(buildWidgetTile));
+            onAddTiles(flowTilesIntoRows(widgetsToAdd.map(buildWidgetTile)));
             onClose();
         },
         [onAddTiles, onClose],

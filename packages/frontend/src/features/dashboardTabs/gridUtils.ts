@@ -3,6 +3,9 @@ import { type Layout } from 'react-grid-layout';
 
 const DEFAULT_COLS = 36;
 
+/** The column count tile positions are stored in, whatever the breakpoint */
+export const BASE_GRID_COLS = DEFAULT_COLS;
+
 export const GRID_BREAKPOINTS = { lg: 1200, md: 996, sm: 768 };
 export const GRID_COLS = { lg: DEFAULT_COLS, md: 30, sm: 18 };
 /**
