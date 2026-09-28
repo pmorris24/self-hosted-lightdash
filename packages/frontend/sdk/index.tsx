@@ -257,6 +257,7 @@ import {
     type LightdashUnitOfTime,
 } from './model/queryFilters';
 import { SDK_SCOPE_CLASS } from './styles/scope.json';
+import { type LightdashMotion, type MotionEasing } from './theme/motion';
 import { useLightdashTheme, type LightdashTheme } from './theme/themeContext';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { CustomWidgetsProvider } from './widgets/customWidgets';
@@ -2616,6 +2617,8 @@ export type {
     AgentChartProps,
     AgentFramedChartProps,
     LightdashTheme,
+    LightdashMotion,
+    MotionEasing,
     LightdashChartFields,
     LightdashChartModel,
     DateGranularity,

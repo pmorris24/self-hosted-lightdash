@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { type AgentThemeSettings } from '../ai/agentTheme';
+import { type LightdashMotion } from './motion';
 
 export type LightdashTheme = {
     colorScheme?: 'light' | 'dark';
@@ -11,6 +12,9 @@ export type LightdashTheme = {
     // The look of one surface, in sections of its own. A piece's own
     // `styleOptions` still wins over what is set here.
     agent?: AgentThemeSettings;
+    // How charts move as they draw and as their rows change. Without it,
+    // charts draw still.
+    motion?: LightdashMotion;
 };
 
 export const ThemeContext = createContext<LightdashTheme>({});

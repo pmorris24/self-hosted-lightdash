@@ -4,6 +4,7 @@ import {
     TimeFrames,
     type CustomFormat,
 } from '@lightdash/common';
+import { formatColumnNumber } from '../data/adapter';
 import { type DataColumn, type DataRow } from '../data/types';
 
 export type DateGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year';
@@ -39,7 +40,10 @@ export const getDefaultDateFormat = (granularity: DateGranularity): string => {
     }
 };
 
-/** Rows as display text: numbers and dates formatted, the rest as strings. */
+/**
+ * Rows as display text: numbers and dates formatted, the rest as strings. A
+ * number column's `format`, `round` and `compact` are applied.
+ */
 export const formatRows = (
     rows: DataRow[],
     columns: DataColumn[],
@@ -52,7 +56,12 @@ export const formatRows = (
                     return [column.name, ''];
                 }
                 if (column.type === 'number' && typeof value === 'number') {
-                    return [column.name, formatNumber(value)];
+                    // A column's own format — as a query returns it from the
+                    // model — wins over the plain number.
+                    return [
+                        column.name,
+                        formatColumnNumber(value, column) ?? formatNumber(value),
+                    ];
                 }
                 if (
                     (column.type === 'date' || column.type === 'timestamp') &&

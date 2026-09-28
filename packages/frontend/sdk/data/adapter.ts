@@ -171,6 +171,26 @@ const numberFormat = new Intl.NumberFormat(undefined, {
 const isDateColumn = (column: DataColumn): boolean =>
     column.type === 'date' || column.type === 'timestamp';
 
+/**
+ * A number as its column says to show it: the column's format, rounding and
+ * compact setting, the way a Lightdash field with the same metadata reads.
+ * `undefined` when the column carries none of them.
+ */
+export const formatColumnNumber = (
+    value: number,
+    column: DataColumn,
+): string | undefined =>
+    hasDisplayOptions(column)
+        ? formatItemValue(
+              toMetric({
+                  ...column,
+                  label: column.label ?? column.name,
+                  type: 'number',
+              }),
+              value,
+          )
+        : undefined;
+
 // The default display text: numbers with display metadata and dates with a
 // time interval get the same Lightdash formatting as the axis labels; other
 // numbers show up to two decimals; anything else is the value as text.

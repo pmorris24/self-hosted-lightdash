@@ -68,6 +68,19 @@ describe('formatting', () => {
             ),
         ).toEqual([{ day: '2026-03-09', total: '1,500', status: '' }]);
     });
+
+    it("applies a number column's own format, as a query returns it", () => {
+        expect(
+            formatRows(
+                [{ amount: 949.765, orders: 151, rate: 0.4 }],
+                [
+                    { name: 'amount', type: 'number', format: '[$$]#,##0.00' },
+                    { name: 'orders', type: 'number', format: '#,##0.###' },
+                    { name: 'rate', type: 'number', format: 'percent' },
+                ],
+            ),
+        ).toEqual([{ amount: '$949.77', orders: '151', rate: '40%' }]);
+    });
 });
 
 describe('useSyncedState', () => {
