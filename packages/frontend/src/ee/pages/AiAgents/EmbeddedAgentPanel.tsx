@@ -1,7 +1,10 @@
 import { Center, Loader } from '@mantine/core';
 import { type CSSProperties, type FC } from 'react';
 import { LauncherPanel } from '../../features/aiCopilot/components/Launcher/LauncherPanel';
-import { useProjectAiAgent } from '../../features/aiCopilot/hooks/useProjectAiAgents';
+import {
+    useProjectAiAgent,
+    useProjectAiAgents,
+} from '../../features/aiCopilot/hooks/useProjectAiAgents';
 import { useAiAgentStoreSelector } from '../../features/aiCopilot/store/hooks';
 
 type Props = {
@@ -28,6 +31,10 @@ export const EmbeddedAgentPanel: FC<Props> = ({ projectUuid, agentUuid }) => {
         projectUuid,
         agentUuid,
     );
+    const { data: agents } = useProjectAiAgents({
+        projectUuid,
+        redirectOnUnauthorized: false,
+    });
     const activeThreadId = useAiAgentStoreSelector(
         (state) => state.aiAgentLauncher.activeThreadId,
     );
@@ -44,7 +51,7 @@ export const EmbeddedAgentPanel: FC<Props> = ({ projectUuid, agentUuid }) => {
         <LauncherPanel
             projectUuid={projectUuid}
             agent={agent}
-            agents={[]}
+            agents={agents ?? []}
             activeThreadId={activeThreadId}
             style={FILL}
         />

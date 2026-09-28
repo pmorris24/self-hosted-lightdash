@@ -34,7 +34,7 @@ vi.mock(
     }),
 );
 vi.mock('../../src/ee/pages/AiAgents/AgentPage', () => ({
-    default: () => null,
+    default: () => <div>Native agent page</div>,
 }));
 vi.mock('../../src/ee/pages/AiAgents/AgentThreadPage', () => ({
     default: () => null,
@@ -73,6 +73,29 @@ const panel = (agentUuid: string, threadUuid?: string) => (
 );
 
 describe('embedded agent conversations', () => {
+    it('renders the native page route for the workspace surface', () => {
+        render(
+            <AgentChat
+                projectUuid="project"
+                agentUuid="agent"
+                layout="workspace"
+            />,
+            {
+                wrapper: ({ children }) => (
+                    <MemoryRouter
+                        initialEntries={[
+                            '/embed/project/ai-agents/agent/threads',
+                        ]}
+                    >
+                        {children}
+                    </MemoryRouter>
+                ),
+            },
+        );
+
+        expect(screen.getByText('Native agent page')).toBeInTheDocument();
+    });
+
     it('enables theme overrides only when the host supplies a theme', () => {
         const { container, rerender } = render(panel('agent'), {
             wrapper: MemoryRouter,

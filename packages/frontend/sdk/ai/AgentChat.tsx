@@ -40,7 +40,7 @@ const ThreadWatcher: FC<{
     return null;
 };
 
-export type AgentLayout = 'panel' | 'page';
+export type AgentLayout = 'panel' | 'page' | 'workspace';
 
 const PanelThreadWatcher: FC<{
     onThreadChange: AgentThreadChange;
@@ -66,7 +66,7 @@ type Props = {
  * the same conversation, chart cards, suggested questions and composer the
  * product ships, sharing the page's React tree and wearing its styles.
  *
- * Two containers: the outer one carries the page's style options, and the
+ * The outer container carries the page's style options, and the
  * inner one is the public `ld-agent-root`, under which the SDK's stylesheet
  * feeds them back into the parts of the UI that have no class of their own.
  */

@@ -227,6 +227,7 @@ import {
 } from '../src/utils/inMemoryStorage';
 import {
     AiAgent,
+    AiAgentLauncher,
     Chart,
     Dashboard,
     MetricsCatalog,
@@ -547,6 +548,60 @@ describe('SDK AI agent', () => {
     const mockToken =
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb250ZW50Ijp7InR5cGUiOiJhaUFnZW50IiwicHJvamVjdFV1aWQiOiJ0ZXN0LXByb2plY3QtdXVpZCIsImFnZW50VXVpZCI6InRlc3QtYWdlbnQtdXVpZCJ9fQ.test';
     const mockInstanceUrl = 'http://localhost:3000';
+
+    it('moves through the native launcher surfaces', async () => {
+        const onViewChange = vi.fn();
+        render(
+            <AiAgentLauncher
+                token={mockToken}
+                instanceUrl={mockInstanceUrl}
+                agentUuid="test-agent-uuid"
+                onViewChange={onViewChange}
+            />,
+        );
+
+        const launcher = await screen.findByRole('button', {
+            name: 'Ask AI Agent',
+        });
+        expect(launcher).toHaveAttribute('aria-expanded', 'false');
+
+        fireEvent.click(launcher);
+        expect(onViewChange).toHaveBeenCalledWith('panel');
+        expect(launcher).toHaveAttribute('aria-expanded', 'true');
+        await waitFor(() => {
+            expect(document.querySelector('.ld-agent-root')).toBeTruthy();
+        });
+    });
+
+    it('lets the host control the native launcher surface', async () => {
+        const { rerender } = render(
+            <AiAgentLauncher
+                token={mockToken}
+                instanceUrl={mockInstanceUrl}
+                agentUuid="test-agent-uuid"
+                view="collapsed"
+            />,
+        );
+
+        expect(
+            await screen.findByRole('button', { name: 'Ask AI Agent' }),
+        ).toHaveAttribute('aria-expanded', 'false');
+
+        rerender(
+            <AiAgentLauncher
+                token={mockToken}
+                instanceUrl={mockInstanceUrl}
+                agentUuid="test-agent-uuid"
+                view="workspace"
+            />,
+        );
+
+        await waitFor(() => {
+            expect(
+                document.querySelector('.lightdash-ai-agent-fullscreen'),
+            ).toBeTruthy();
+        });
+    });
 
     it('renders the embed AI agent iframe for the token project', async () => {
         const { container } = render(

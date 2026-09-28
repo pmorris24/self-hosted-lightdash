@@ -18,7 +18,10 @@ import { useNavigate } from 'react-router';
 import { LightdashUserAvatar } from '../../../../../components/Avatar';
 import MantineIcon from '../../../../../components/common/MantineIcon';
 import useEmbed from '../../../../providers/Embed/useEmbed';
-import { isEmbedAiAgentRoute } from '../../hooks/aiAgentRouting';
+import {
+    getAiAgentPageBase,
+    isEmbedAiAgentRoute,
+} from '../../hooks/aiAgentRouting';
 import { useAiRouterConfig } from '../../hooks/useAiRouter';
 import { closePanel, openPanel } from '../../store/aiAgentLauncherSlice';
 import {
@@ -58,7 +61,7 @@ export const PanelHeader: FC<Props> = ({
     // An embed has its own chrome: the host page decides whether the bar is
     // there at all, and fullscreen and close belong to the product's launcher.
     const isEmbed = isEmbedAiAgentRoute();
-    const { agentFeatures, agentAvatar } = useEmbed();
+    const { agentFeatures, agentAvatar, agentActions } = useEmbed();
     const pendingContext = useAiAgentStoreSelector(
         (state) => state.aiAgentLauncher.pendingContext,
     );
@@ -70,11 +73,13 @@ export const PanelHeader: FC<Props> = ({
 
     const canSwitchAgent =
         showAgentSwitcher &&
-        !isEmbed &&
         threadId === null &&
         (agents.length > 1 || showAutoOption);
 
-    const handleClose = () => dispatch(closePanel());
+    const handleClose = () => {
+        dispatch(closePanel());
+        agentActions?.onClose?.();
+    };
     const handleSwitchAgent = (nextAgentUuid: string) => {
         dispatch(
             openPanel({
@@ -86,11 +91,15 @@ export const PanelHeader: FC<Props> = ({
     };
     const handleExpand = () => {
         if (!agent) return;
+        if (agentActions?.onExpand) {
+            agentActions.onExpand();
+            return;
+        }
         launcherSession.markExpandedFromBubble();
         let target;
         if (threadId) {
             if (isAuto) return;
-            target = `/projects/${projectUuid}/ai-agents/${agent.uuid}/threads/${threadId}`;
+            target = `${getAiAgentPageBase(projectUuid)}/${agent.uuid}/threads/${threadId}`;
         } else {
             target = buildNewThreadUrl({ projectUuid, agent, pendingContext });
         }
@@ -222,11 +231,7 @@ export const PanelHeader: FC<Props> = ({
                     </Group>
                 ) : null}
             </Group>
-            <Group
-                gap="xs"
-                wrap="nowrap"
-                display={isEmbed ? 'none' : undefined}
-            >
+            <Group gap="xs" wrap="nowrap">
                 <ActionIcon
                     size="sm"
                     onClick={handleExpand}

@@ -67,6 +67,8 @@ import ThirdPartyServicesProvider from '../src/providers/ThirdPartyServicesProvi
 import TrackingProvider from '../src/providers/Tracking/TrackingProvider';
 import { unregisterEmbedInstance } from '../src/utils/embedInstance';
 import { setToInMemoryStorage } from '../src/utils/inMemoryStorage';
+import { AiAgentIcon } from '../src/ee/features/aiCopilot/components/AiAgentIcon';
+import launcherStyles from '../src/ee/features/aiCopilot/components/Launcher/AiAgentsLauncher.module.css';
 import { type AgentAnswer } from './ai/agentApi';
 import {
     agentChartTranslator,
@@ -342,6 +344,12 @@ type AiAgentProps = Omit<
          * state can start a fresh conversation without losing the old id.
          */
         onThreadChange?: (options: { threadUuid: string | null }) => void;
+        /** Called after the native panel Close control closes the surface. */
+        onClose?: () => void;
+        /** Called after the native panel expands to the page surface. */
+        onExpand?: () => void;
+        /** Called after the native page minimizes to the panel surface. */
+        onMinimize?: (state: { threadUuid: string | null }) => void;
         threadUuid?: string;
         /** Initial prompt chips for inline embeds when the API has no suggestions. */
         suggestedQuestions?: string[];
@@ -352,12 +360,12 @@ type AiAgentProps = Omit<
          */
         render?: 'inline' | 'iframe';
         /**
-         * Which of the product's two agent surfaces to render. `panel` (the
+         * Which native agent surface to render. `panel` (the
          * default) is the small panel that opens beside a dashboard: a title bar,
          * the agent's mark and description, its connections and pinned context,
          * and the compact composer. `page` is the full-page agent, with its
-         * suggested questions and the agent and model pickers. The iframe always
-         * renders the page.
+         * suggested questions and the agent and model pickers. `workspace` adds
+         * the native thread sidebar. The iframe always renders the page.
          */
         layout?: AgentLayout;
         /**
@@ -387,6 +395,20 @@ type AiAgentProps = Omit<
          */
         avatar?: (options: { size: number }) => ReactNode;
     };
+
+export type AiAgentLauncherView = 'collapsed' | 'panel' | 'workspace';
+
+export type AiAgentLauncherProps = Omit<
+    AiAgentProps,
+    'layout' | 'surface' | 'render' | 'onClose' | 'onExpand' | 'onMinimize'
+> & {
+    /** Controls the current native launcher state. */
+    view?: AiAgentLauncherView;
+    /** The first native launcher state. The default is the purple agent ball. */
+    defaultView?: AiAgentLauncherView;
+    /** Reports each native launcher transition to the host application. */
+    onViewChange?: (view: AiAgentLauncherView) => void;
+};
 
 type MetricsCatalogProps = Omit<
     BaseProps,
@@ -1455,6 +1477,9 @@ const AiAgentFrame: FC<AiAgentProps> = ({
 const AiAgentInline: FC<AiAgentProps> = ({
     agentUuid,
     onThreadChange,
+    onClose,
+    onExpand,
+    onMinimize,
     threadUuid,
     styleOptions,
     features,
@@ -1464,6 +1489,9 @@ const AiAgentInline: FC<AiAgentProps> = ({
     surface,
     ...connectionProps
 }) => {
+    const requestedSurface = resolveAgentLayout(surface, layout);
+    const [activeSurface, setActiveSurface] = useState(requestedSurface);
+    const [isClosed, setIsClosed] = useState(false);
     const {
         token: tokenOrTokenPromise,
         instanceUrl,
@@ -1472,7 +1500,12 @@ const AiAgentInline: FC<AiAgentProps> = ({
     } = useSdkConnection(connectionProps);
     const tokenContext = useEmbedTokenContext(instanceUrl, tokenOrTokenPromise);
 
-    if (!tokenContext) {
+    useEffect(() => {
+        setActiveSurface(requestedSurface);
+        setIsClosed(false);
+    }, [requestedSurface]);
+
+    if (!tokenContext || isClosed) {
         return null;
     }
 
@@ -1494,13 +1527,28 @@ const AiAgentInline: FC<AiAgentProps> = ({
                 agentFeatures={toSdkAgentFeatures(
                     resolveAiAgentFeatures(features),
                 )}
+                agentSurface={activeSurface}
+                agentActions={{
+                    onClose: () => {
+                        setIsClosed(true);
+                        onClose?.();
+                    },
+                    onExpand: () => {
+                        setActiveSurface('page');
+                        onExpand?.();
+                    },
+                    onMinimize: (state) => {
+                        setActiveSurface('panel');
+                        onMinimize?.(state);
+                    },
+                }}
                 agentAvatar={avatar}
                 agentSuggestedQuestions={suggestedQuestions}
             >
                 <AgentChat
                     styleOptions={styleOptions}
                     onThreadChange={onThreadChange}
-                    layout={resolveAgentLayout(surface, layout)}
+                    layout={activeSurface}
                     projectUuid={tokenContext.projectUuid}
                     agentUuid={agentUuid}
                     threadUuid={threadUuid}
@@ -1521,6 +1569,96 @@ const AiAgent: FC<AiAgentProps> = ({ render = 'inline', ...props }) =>
     ) : (
         <AiAgentInline {...props} />
     );
+
+/**
+ * The complete native launcher flow over a host page: purple agent ball,
+ * compact panel, and full-screen workspace. The active thread is preserved
+ * while the viewer moves between the three native surfaces.
+ */
+const AiAgentLauncher: FC<AiAgentLauncherProps> = ({
+    view: controlledView,
+    defaultView = 'collapsed',
+    onViewChange,
+    onThreadChange,
+    threadUuid,
+    agentUuid,
+    ...props
+}) => {
+    const [internalView, setInternalView] =
+        useState<AiAgentLauncherView>(defaultView);
+    const view = controlledView ?? internalView;
+    const [activeThreadUuid, setActiveThreadUuid] = useState(threadUuid);
+    const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+
+    useEffect(() => setPortalRoot(document.body), []);
+    useEffect(() => setActiveThreadUuid(threadUuid), [threadUuid]);
+
+    const changeView = useCallback(
+        (nextView: AiAgentLauncherView) => {
+            setInternalView(nextView);
+            onViewChange?.(nextView);
+        },
+        [onViewChange],
+    );
+    const handleThreadChange = useCallback(
+        (event: { threadUuid: string | null }) => {
+            setActiveThreadUuid(event.threadUuid ?? undefined);
+            onThreadChange?.(event);
+        },
+        [onThreadChange],
+    );
+
+    if (!portalRoot) return null;
+
+    if (view === 'workspace') {
+        return createPortal(
+            <div className="lightdash-ai-agent-fullscreen">
+                <AiAgent
+                    key="workspace"
+                    {...props}
+                    agentUuid={agentUuid}
+                    threadUuid={activeThreadUuid}
+                    surface="workspace"
+                    onThreadChange={handleThreadChange}
+                    onMinimize={() => changeView('panel')}
+                />
+            </div>,
+            portalRoot,
+        );
+    }
+
+    return createPortal(
+        <div className={launcherStyles.root}>
+            <div className={launcherStyles.dock}>
+                <button
+                    type="button"
+                    title="Ask AI Agent"
+                    aria-label="Ask AI Agent"
+                    aria-expanded={view === 'panel'}
+                    className={`${launcherStyles.dockTab} ${launcherStyles.dockIconTab} ${view === 'panel' ? launcherStyles.dockTabActive : ''}`}
+                    onClick={() => changeView('panel')}
+                >
+                    <AiAgentIcon size={16} animated={view === 'collapsed'} />
+                </button>
+            </div>
+            {view === 'panel' && (
+                <div className={launcherStyles.panel}>
+                    <AiAgent
+                        key="panel"
+                        {...props}
+                        agentUuid={agentUuid}
+                        threadUuid={activeThreadUuid}
+                        surface="panel"
+                        onThreadChange={handleThreadChange}
+                        onClose={() => changeView('collapsed')}
+                        onExpand={() => changeView('workspace')}
+                    />
+                </div>
+            )}
+        </div>,
+        portalRoot,
+    );
+};
 
 const MetricsCatalog: FC<MetricsCatalogProps> = (connectionProps) => {
     const {
@@ -2439,6 +2577,7 @@ const Lightdash = {
     DataApp,
     DataAppComponent,
     AiAgent,
+    AiAgentLauncher,
     Dashboard,
     DashboardBuilder,
     MetricsCatalog,
@@ -2539,6 +2678,7 @@ export {
     DataApp,
     DataAppComponent,
     AiAgent,
+    AiAgentLauncher,
     Chart,
     Dashboard,
     DashboardBuilder,

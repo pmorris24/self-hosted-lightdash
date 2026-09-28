@@ -46,6 +46,8 @@ import { parseEmbedThemeParams } from './parseEmbedThemeParams';
 import { parseEmbedTimezoneParam } from './parseEmbedTimezoneParam';
 import {
     EMBED_KEY,
+    type EmbedAgentActions,
+    type EmbedAgentSurface,
     type EmbedExploreChart,
     type EmbedExploreOptions,
     type EmbedMode,
@@ -60,6 +62,8 @@ type Props = {
     contentOverrides?: LanguageMap;
     uiOverrides?: SdkUiOverrides;
     agentFeatures?: SdkAgentFeatures;
+    agentSurface?: EmbedAgentSurface;
+    agentActions?: EmbedAgentActions;
     agentSuggestedQuestions?: string[];
     agentAvatar?: (options: { size: number }) => ReactNode;
     embedHeaders?: Record<string, string>;
@@ -105,6 +109,8 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
     contentOverrides,
     uiOverrides,
     agentFeatures,
+    agentSurface,
+    agentActions,
     agentAvatar,
     agentSuggestedQuestions,
     onExplore,
@@ -252,6 +258,8 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
             // direct-embed transport adds its source here.
             t: (input: UiStringKey) => uiOverrides?.[input],
             agentFeatures: resolveSdkAgentFeatures(agentFeatures),
+            agentSurface,
+            agentActions,
             agentAvatar,
             agentSuggestedQuestions,
             projectUuid: embed?.projectUuid || projectUuid,
@@ -286,6 +294,8 @@ const EmbedProvider: FC<React.PropsWithChildren<Props>> = ({
         contentOverrides,
         uiOverrides,
         agentFeatures,
+        agentSurface,
+        agentActions,
         agentAvatar,
         agentSuggestedQuestions,
         onExplore,

@@ -80,7 +80,11 @@ const AgentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const isEmbed = isEmbedAiAgentRoute();
-    const { agentFeatures, agentAvatar } = useEmbed();
+    const { agentFeatures, agentAvatar, agentSurface, agentActions } =
+        useEmbed();
+    const showNativePageChrome =
+        !isEmbed || agentSurface === 'page' || agentSurface === 'workspace';
+    const showNativeSidebar = !isEmbed || agentSurface === 'workspace';
     const canManageAgents = useAiAgentPermission({
         action: 'manage',
         projectUuid,
@@ -179,6 +183,12 @@ const AgentPage = () => {
                     }),
                 );
             }
+            if (agentActions?.onMinimize) {
+                agentActions.onMinimize({
+                    threadUuid: panelThreadUuid ?? null,
+                });
+                return;
+            }
             void navigate(
                 targetUrl ??
                     launcherSession.consumeLastNonAgentUrl() ??
@@ -189,6 +199,7 @@ const AgentPage = () => {
         [
             addDockItem,
             agent,
+            agentActions,
             navigate,
             projectUuid,
             searchParams,
@@ -267,51 +278,53 @@ const AgentPage = () => {
             setIsAgentSidebarCollapsed={setIsAgentSidebarCollapsed}
             isAgentSidebarCollapsed={isAgentSidebarCollapsed}
             Sidebar={
-                isEmbed ? undefined : (
+                showNativeSidebar ? (
                     <AgentSidebar
                         agent={agent}
                         projectUuid={projectUuid!}
                         threadUuid={threadUuid}
                         isAgentSidebarCollapsed={isAgentSidebarCollapsed}
                     />
-                )
+                ) : undefined
             }
             Header={
-                isEmbed ? (
+                showNativePageChrome ? (
+                    agentsList && agentsList.length > 0 ? (
+                        <AgentPageHeader
+                            leftSection={
+                                <AgentSelector
+                                    projectUuid={projectUuid!}
+                                    agents={agentsList}
+                                    selectedAgent={agent}
+                                    variant="header"
+                                />
+                            }
+                            onShare={
+                                thread?.createdFrom === 'web_app'
+                                    ? handleShare
+                                    : undefined
+                            }
+                            isSharing={isCreatingShare}
+                            onOpenMemories={
+                                memoryEnabled
+                                    ? () => setIsMemoriesModalOpen(true)
+                                    : undefined
+                            }
+                            onMinimize={() => handleMinimize()}
+                            settingsHref={
+                                canManageAgents
+                                    ? `/projects/${projectUuid}/ai-agents/${agent.uuid}/edit`
+                                    : undefined
+                            }
+                        />
+                    ) : undefined
+                ) : isEmbed ? (
                     agentFeatures.header ? (
                         <EmbeddedAgentHeader
                             agent={agent}
                             avatar={agentAvatar}
                         />
                     ) : undefined
-                ) : agentsList && agentsList.length > 0 ? (
-                    <AgentPageHeader
-                        leftSection={
-                            <AgentSelector
-                                projectUuid={projectUuid!}
-                                agents={agentsList}
-                                selectedAgent={agent}
-                                variant="header"
-                            />
-                        }
-                        onShare={
-                            thread?.createdFrom === 'web_app'
-                                ? handleShare
-                                : undefined
-                        }
-                        isSharing={isCreatingShare}
-                        onOpenMemories={
-                            memoryEnabled
-                                ? () => setIsMemoriesModalOpen(true)
-                                : undefined
-                        }
-                        onMinimize={() => handleMinimize()}
-                        settingsHref={
-                            canManageAgents
-                                ? `/projects/${projectUuid}/ai-agents/${agent.uuid}/edit`
-                                : undefined
-                        }
-                    />
                 ) : undefined
             }
         >
@@ -375,7 +388,7 @@ const AgentPage = () => {
                 onClose={() => setEditChartUuid(null)}
             />
             <AiThreadChartEditContext.Provider
-                value={isEmbed ? undefined : openChartEditor}
+                value={showNativePageChrome ? openChartEditor : undefined}
             >
                 <Outlet
                     context={{

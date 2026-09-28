@@ -11,9 +11,10 @@ describe('agent surface', () => {
         expect(resolveAgentLayout(undefined, undefined)).toBe('panel');
     });
 
-    it('maps the two surfaces a host can render today', () => {
+    it('maps each native surface', () => {
         expect(resolveAgentLayout('panel', undefined)).toBe('panel');
         expect(resolveAgentLayout('page', undefined)).toBe('page');
+        expect(resolveAgentLayout('workspace', undefined)).toBe('workspace');
     });
 
     it('keeps the deprecated layout prop working', () => {
@@ -30,18 +31,4 @@ describe('agent surface', () => {
         expect(warn).not.toHaveBeenCalled();
     });
 
-    it('renders the page for a workspace and says why', () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        expect(resolveAgentLayout('workspace', undefined)).toBe('page');
-        expect(warn).toHaveBeenCalledOnce();
-        expect(warn.mock.calls[0][0]).toContain('not available yet');
-    });
-
-    it('warns once, not on every render', () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        resolveAgentLayout('workspace', undefined);
-        resolveAgentLayout('workspace', undefined);
-        resolveAgentLayout('workspace', undefined);
-        expect(warn).toHaveBeenCalledOnce();
-    });
 });

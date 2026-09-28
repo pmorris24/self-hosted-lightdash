@@ -22,14 +22,9 @@ export const resetSurfaceWarnings = (): void => warned.clear();
 const LAYOUT_DEPRECATED =
     '`layout` on AiAgent is deprecated. Use `surface` instead: layout="panel" is surface="panel", layout="page" is surface="page".';
 
-const WORKSPACE_UNAVAILABLE =
-    'surface="workspace" is not available yet and renders surface="page". Thread navigation and thread actions arrive with the workspace surface.';
-
 /**
  * `surface` is what a host writes now; `layout` is the older name for the
- * same thing and wins nothing when both are given. `workspace` is not built
- * yet, so it renders the page surface and says so, rather than quietly
- * rendering a panel that is missing half of what was asked for.
+ * same thing and wins nothing when both are given.
  */
 export const resolveAgentLayout = (
     surface: AiAgentSurface | undefined,
@@ -38,10 +33,6 @@ export const resolveAgentLayout = (
     if (surface === undefined) {
         if (layout !== undefined) warnOnce(LAYOUT_DEPRECATED);
         return layout ?? 'panel';
-    }
-    if (surface === 'workspace') {
-        warnOnce(WORKSPACE_UNAVAILABLE);
-        return 'page';
     }
     return surface;
 };

@@ -24,6 +24,14 @@ export type InMemoryEmbed = {
 
 export type EmbedMode = 'sdk' | 'direct';
 
+export type EmbedAgentSurface = 'panel' | 'page' | 'workspace';
+
+export type EmbedAgentActions = {
+    onClose?: () => void;
+    onExpand?: () => void;
+    onMinimize?: (state: { threadUuid: string | null }) => void;
+};
+
 export type EmbedExploreChart = SavedChart | CreateSavedChartVersion;
 
 export type EmbedExploreOptions = {
@@ -59,6 +67,10 @@ export interface EmbedContext {
     // Which parts of the agent a host page asked for. Everything it does not
     // mention stays on, so an embed that says nothing gets the whole agent.
     agentFeatures: Required<SdkAgentFeatures>;
+    // The native agent surface selected by an SDK host.
+    agentSurface?: EmbedAgentSurface;
+    // Host adapters for controls that normally change product-level chrome.
+    agentActions?: EmbedAgentActions;
     // A host page's own mark, drawn at the size the agent reserves for it,
     // shown wherever the agent would show its avatar.
     agentSuggestedQuestions?: string[];

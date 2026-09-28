@@ -17,6 +17,8 @@ const EmbedProviderContext = createContext<EmbedContext>({
     languageMap: undefined,
     t: (_input: UiStringKey) => undefined,
     agentFeatures: DEFAULT_SDK_AGENT_FEATURES,
+    agentSurface: undefined,
+    agentActions: undefined,
     agentAvatar: undefined,
     onExplore: (_options: { chart: EmbedExploreChart }) => {},
     savedChart: undefined,
