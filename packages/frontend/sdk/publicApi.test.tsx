@@ -33,6 +33,7 @@ const PUBLIC_SURFACE = [
     'DataApp',
     'DataAppComponent',
     'AiAgent',
+    'AiAgentLauncher',
     // Charts and tables: the component name says where the data comes from
     'Chart',
     'QueryChart',

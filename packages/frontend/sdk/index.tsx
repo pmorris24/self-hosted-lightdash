@@ -1570,6 +1570,16 @@ const AiAgent: FC<AiAgentProps> = ({ render = 'inline', ...props }) =>
         <AiAgentInline {...props} />
     );
 
+// Portalled outside the SDK scope, where the scoped stylesheets cannot reach.
+const FULLSCREEN_AGENT_STYLE: React.CSSProperties = {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 300,
+    display: 'grid',
+    overflow: 'hidden',
+    background: 'var(--mantine-color-body, #fff)',
+};
+
 /**
  * The complete native launcher flow over a host page: purple agent ball,
  * compact panel, and full-screen workspace. The active thread is preserved
@@ -1612,7 +1622,10 @@ const AiAgentLauncher: FC<AiAgentLauncherProps> = ({
 
     if (view === 'workspace') {
         return createPortal(
-            <div className="lightdash-ai-agent-fullscreen">
+            <div
+                className="lightdash-ai-agent-fullscreen"
+                style={FULLSCREEN_AGENT_STYLE}
+            >
                 <AiAgent
                     key="workspace"
                     {...props}

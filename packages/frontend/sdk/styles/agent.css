@@ -189,18 +189,6 @@
     height: 100%;
 }
 
-.lightdash-ai-agent-fullscreen {
-    position: fixed;
-    inset: 0;
-    z-index: var(--mantine-z-index-modal, 300);
-    overflow: hidden;
-    background: var(--mantine-color-body, #fff);
-}
-
-.lightdash-ai-agent-fullscreen > .lightdash-sdk-scope {
-    height: 100%;
-}
-
 .lightdash-sdk-scope .ld-agent-root[data-agent-themed] .ld-agent-thread {
     background-color: var(--ld-agent-background);
     font-size: var(--ld-agent-font-size);

@@ -95,6 +95,13 @@ const SimpleTreemap: FC<SimpleTreemapProps> = memo(
             if (!treemapOptions) signalScreenshotReady();
         }, [treemapOptions, signalScreenshotReady]);
 
+        // The chart is not rebuilt when readiness changes, so render again to emit `finished`.
+        useEffect(() => {
+            if (!onScreenshotReady || hasSignaledScreenshotReady.current)
+                return;
+            chartRef.current?.getEchartsInstance().getZr().refresh();
+        }, [chartRef, onScreenshotReady, signalScreenshotReady]);
+
         useEffect(() => {
             if (hasSignaledScreenshotReady.current || !onScreenshotError)
                 return;
