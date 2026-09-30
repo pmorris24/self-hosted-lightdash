@@ -2635,6 +2635,19 @@ describe('composeLegendConfig', () => {
         formatter: () => LEGEND_INTERACTION_HINT,
     };
 
+    test.each(['circle', 'rect', 'roundRect', 'triangle', 'diamond'])(
+        'preserves the selected %s legend symbol',
+        (icon) => {
+            const merged = mergeLegendSettings({ icon }, selected, series);
+            const result = composeLegendConfig(
+                merged,
+                getLegendStyle('line'),
+                doubleClickTooltip,
+            );
+            expect(result.icon).toBe(icon);
+        },
+    );
+
     test('keeps outside-legend truncation alongside the shared typography', () => {
         const merged = mergeLegendSettings(
             { placement: 'outsideRight' },

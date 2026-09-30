@@ -583,8 +583,8 @@ export const composeLegendConfig = (
 ) => {
     const isTruncated = mergedLegend.textStyle?.overflow === 'truncate';
     return {
-        ...mergedLegend,
         ...legendStyle,
+        ...mergedLegend,
         textStyle: { ...legendStyle.textStyle, ...mergedLegend.textStyle },
         tooltip: isTruncated
             ? {
@@ -4190,6 +4190,7 @@ const useEchartsCartesianConfig = (
             }`,
             axisPointer: getAxisPointerStyle(hasLineAreaScatterSeries),
             formatter: buildCartesianTooltipFormatter({
+                legendSymbol: validCartesianConfig?.eChartsConfig.legend?.icon,
                 itemsMap,
                 stackValue: validCartesianConfig?.layout?.stack,
                 flipAxes: validCartesianConfig?.layout.flipAxes,
@@ -4207,6 +4208,7 @@ const useEchartsCartesianConfig = (
             }),
         };
     }, [
+        validCartesianConfig?.eChartsConfig.legend?.icon,
         itemsMap,
         validCartesianConfig?.layout.flipAxes,
         validCartesianConfig?.layout?.stack,

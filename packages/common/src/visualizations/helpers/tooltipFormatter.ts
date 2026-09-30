@@ -551,6 +551,7 @@ export function createStack100TooltipFormatter(
     displayTimezone?: string,
     pivotValuesColumnsMap?: Record<string, PivotValuesColumn>,
     parameters?: ParametersValuesMap,
+    legendSymbol?: string,
 ) {
     return (params: TooltipParams) => {
         if (!Array.isArray(params)) return '';
@@ -642,6 +643,7 @@ export function createStack100TooltipFormatter(
 
                 const colorIndicator = formatColorIndicator(
                     extractColor(marker),
+                    legendSymbol,
                 );
                 return formatCartesianTooltipRow(
                     colorIndicator,
@@ -941,6 +943,7 @@ export const buildCartesianTooltipFormatter =
         rows,
         timezone,
         displayTimezone,
+        legendSymbol,
     }: {
         itemsMap?: ItemsMap;
         stackValue: string | boolean | undefined;
@@ -957,6 +960,7 @@ export const buildCartesianTooltipFormatter =
         rows?: (ResultRow | Record<string, unknown>)[];
         timezone?: string;
         displayTimezone?: string;
+        legendSymbol?: string;
     }): TooltipComponentFormatterCallback<
         TooltipFormatterParams | TooltipFormatterParams[]
     > =>
@@ -987,6 +991,7 @@ export const buildCartesianTooltipFormatter =
                 displayTimezone,
                 pivotValuesColumnsMap,
                 parameters,
+                legendSymbol,
             )(params as TooltipParam[]);
         }
 
@@ -1242,6 +1247,7 @@ export const buildCartesianTooltipFormatter =
 
                 const colorIndicator = formatColorIndicator(
                     extractColor(marker),
+                    legendSymbol,
                 );
                 return formatCartesianTooltipRow(
                     colorIndicator,

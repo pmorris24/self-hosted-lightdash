@@ -86,15 +86,28 @@ export const getTooltipDivider = (): string => {
 };
 
 /**
- * Format a color indicator (square) for tooltip (e.g. a color block)
+ * Format a tooltip color indicator using the selected legend symbol.
  */
-export const formatColorIndicator = (color: string): string => {
+export const formatColorIndicator = (
+    color: string,
+    symbol = 'roundRect',
+): string => {
+    let borderRadius = '0';
+    let clipPath = 'none';
+    if (symbol === 'circle') borderRadius = '50%';
+    else if (symbol === 'roundRect') borderRadius = '2px';
+    else if (symbol === 'triangle')
+        clipPath = 'polygon(50% 0, 100% 100%, 0 100%)';
+    else if (symbol === 'diamond')
+        clipPath = 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
     const styles = stylesToString({
         display: 'inline-block',
         width: '10px',
         height: '10px',
         backgroundColor: color,
-        borderRadius: '2px',
+        borderRadius,
+        clipPath,
+        flexShrink: 0,
         verticalAlign: 'middle',
     });
     return `<span style="${styles}"></span>`;
