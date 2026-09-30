@@ -37,6 +37,18 @@ export type LightdashMotion = {
         easing?: MotionEasing;
     };
     /**
+     * Pointing at a mark: the others fade back and the one under the pointer
+     * lifts, a slice out from the pie and a bar or point with a shadow.
+     */
+    hover?: {
+        /** How far the other marks fade, from 0 (gone) to 1 (not at all). */
+        dim?: number;
+        /** How far the mark lifts, in pixels. */
+        lift?: number;
+        /** How long the fade and lift take. */
+        duration?: number;
+    };
+    /**
      * `respect`, the default, keeps charts still for a viewer whose system
      * asks for less motion. `ignore` animates regardless.
      */
@@ -58,6 +70,9 @@ export const mergeMotion = (
         ...override,
         enter: { ...base.enter, ...override.enter },
         update: { ...base.update, ...override.update },
+        ...(base.hover || override.hover
+            ? { hover: { ...base.hover, ...override.hover } }
+            : {}),
     };
 };
 
@@ -78,6 +93,48 @@ const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+type Series = {
+    type?: string;
+    emphasis?: Record<string, unknown> & { itemStyle?: object };
+    blur?: Record<string, unknown> & {
+        itemStyle?: object;
+        lineStyle?: object;
+        areaStyle?: object;
+    };
+};
+
+// The hover states of one series: the rest blur back, the mark lifts.
+const withHover = (series: Series, hover: LightdashMotion['hover']) => {
+    if (!hover) return {};
+    const lift = hover.lift ?? 8;
+    const opacity = hover.dim ?? 0.3;
+    const isPie = series.type === 'pie';
+    return {
+        emphasis: {
+            ...series.emphasis,
+            // A line highlights as a whole; bars and slices one at a time.
+            focus: series.type === 'line' ? 'series' : 'self',
+            ...(isPie ? { scale: true, scaleSize: lift } : {}),
+            itemStyle: {
+                ...series.emphasis?.itemStyle,
+                shadowBlur: lift * 2,
+                shadowOffsetY: isPie ? 0 : lift / 2,
+                shadowColor: 'rgba(0, 0, 0, 0.3)',
+            },
+        },
+        blur: {
+            ...series.blur,
+            itemStyle: { ...series.blur?.itemStyle, opacity },
+            lineStyle: { ...series.blur?.lineStyle, opacity },
+            areaStyle: { ...series.blur?.areaStyle, opacity: opacity / 2 },
+        },
+        stateAnimation: {
+            duration: hover.duration ?? 250,
+            easing: 'cubicOut',
+        },
+    };
+};
 
 /**
  * Lays a theme's motion over a chart option. The renderer draws SDK charts
@@ -106,7 +163,11 @@ export const withMotion = <T>(option: T, motion?: LightdashMotion): T => {
     // so the theme's settings go on each of them too.
     const onSeries = (series: unknown) =>
         series && typeof series === 'object'
-            ? { ...series, ...settings }
+            ? {
+                  ...series,
+                  ...settings,
+                  ...withHover(series as Series, motion.hover),
+              }
             : series;
     const { series } = option as { series?: unknown };
     return {

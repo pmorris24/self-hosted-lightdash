@@ -6,6 +6,8 @@ import { aiAgentThreadStreamSlice } from './aiAgentThreadStreamSlice';
 import { aiArtifactSlice } from './aiArtifactSlice';
 import { createIssueSlice } from './createIssueSlice';
 
+// Used by the SDK's AgentChat (sdk/ai), outside this tsconfig.
+// ts-unused-exports:disable-next-line
 export const createAiAgentStore = () =>
     configureStore({
         reducer: {

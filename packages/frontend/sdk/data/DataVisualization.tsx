@@ -6,6 +6,7 @@ import {
 } from '@lightdash/common';
 import { useCallback, useMemo, type FC } from 'react';
 import LightdashVisualization from '../../src/components/LightdashVisualization';
+import { type DataPointSelection } from '../../src/components/LightdashVisualization/context';
 import VisualizationProvider from '../../src/components/LightdashVisualization/VisualizationProvider';
 import { type EchartsSeriesClickEvent } from '../../src/components/SimpleChart';
 import { useResizeObserver } from '../../src/hooks/useResizeObserver';
@@ -129,11 +130,27 @@ export const DataVisualization: FC<Props> = ({
         [onSelect],
     );
 
+    // Pie and funnel charts report a click as the rows behind the slice
+    // rather than as a series event; it reaches `onSelect` in the same shape.
+    const handleDataPointSelect = useCallback(
+        ({ rows: selected, position }: DataPointSelection) => {
+            const row = Object.fromEntries(
+                Object.entries(selected[0] ?? {}).map(([name, cell]) => [
+                    name,
+                    cell.value.raw,
+                ]),
+            );
+            onSelect?.({ row, columns: Object.keys(row), position });
+        },
+        [onSelect],
+    );
+
     return (
         <VisualizationProvider
             minimal
             hasExplorerStore={false}
             onSeriesContextMenu={onSelect ? handleSeriesClick : undefined}
+            onDataPointSelect={onSelect ? handleDataPointSelect : undefined}
             chartConfig={chartConfig}
             initialPivotDimensions={undefined}
             resultsData={resultsData}

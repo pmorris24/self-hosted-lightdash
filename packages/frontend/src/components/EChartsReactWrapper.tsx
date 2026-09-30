@@ -147,14 +147,16 @@ const EChartsReactWrapper = forwardRef<
     const handleChartReady = useCallback((instance: EChartsInstance) => {
         const resize: (opts?: ResizeOptions) => void =
             instance.resize.bind(instance);
+        // A disposed chart has no element; there is nothing to measure.
         const sizeOf = () => {
-            const dom = instance.getDom();
-            return `${dom.clientWidth}x${dom.clientHeight}`;
+            const dom = instance.getDom() as HTMLElement | null | undefined;
+            return dom ? `${dom.clientWidth}x${dom.clientHeight}` : undefined;
         };
         let lastSize = sizeOf();
         instance.resize = (opts?: ResizeOptions) => {
             const current = motionRef.current;
             const size = sizeOf();
+            if (size === undefined) return undefined;
             if (!current || current.enabled === false) {
                 lastSize = size;
                 return resize(opts);

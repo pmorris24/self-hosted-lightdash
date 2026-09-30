@@ -124,6 +124,15 @@ describe('resizing under motion', () => {
         });
     });
 
+    it('does nothing once the chart has no element', () => {
+        const resize = vi.fn();
+        const instance = { getDom: () => null, resize };
+        render(<EChartsReactWrapper option={{}} />);
+        capture.mock.lastCall![0].onChartReady(instance);
+        expect(() => instance.resize()).not.toThrow();
+        expect(resize).not.toHaveBeenCalled();
+    });
+
     it('resizes as before when the theme sets no motion', () => {
         const chart = fakeChart();
         const onChartReady = vi.fn();

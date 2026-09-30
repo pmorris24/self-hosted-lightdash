@@ -64,6 +64,30 @@ describe('withMotion', () => {
     });
 });
 
+describe('hover', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('fades the other marks and lifts the one under the pointer', () => {
+        reduceMotion(false);
+        const moved = withMotion(
+            { series: [{ type: 'pie' }, { type: 'bar' }, { type: 'line' }] },
+            { hover: { dim: 0.25, lift: 10, duration: 200 } },
+        );
+        const [pie, bar, line] = moved.series as Record<string, any>[];
+        expect(pie.emphasis).toMatchObject({ focus: 'self', scale: true, scaleSize: 10 });
+        expect(bar.emphasis).toMatchObject({ focus: 'self', itemStyle: { shadowBlur: 20 } });
+        expect(bar.blur.itemStyle.opacity).toBe(0.25);
+        expect(line.emphasis.focus).toBe('series');
+        expect(bar.stateAnimation.duration).toBe(200);
+    });
+
+    it('adds no hover states when the theme sets none', () => {
+        reduceMotion(false);
+        const moved = withMotion({ series: [{ type: 'bar' }] }, { enter: { duration: 500 } });
+        expect((moved.series as Record<string, unknown>[])[0].emphasis).toBeUndefined();
+    });
+});
+
 describe('mergeMotion', () => {
     it('changes only the keys the inner theme sets', () => {
         expect(

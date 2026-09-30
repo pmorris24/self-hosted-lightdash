@@ -5,6 +5,8 @@
 // declares the mode instead.
 let embeddedInHostPage = false;
 
+// Used by the SDK's AgentChat (sdk/ai), outside this tsconfig.
+// ts-unused-exports:disable-next-line
 export const setEmbeddedAiAgentMode = (embedded: boolean) => {
     embeddedInHostPage = embedded;
 };

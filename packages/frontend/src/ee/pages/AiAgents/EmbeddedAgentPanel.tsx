@@ -26,6 +26,8 @@ const FILL: CSSProperties = {
  * dashboard, with its title bar, the agent's mark and description, its
  * connections and pinned context, and the compact composer.
  */
+// Used by the SDK's AgentChat (sdk/ai), outside this tsconfig.
+// ts-unused-exports:disable-next-line
 export const EmbeddedAgentPanel: FC<Props> = ({ projectUuid, agentUuid }) => {
     const { data: agent, isLoading } = useProjectAiAgent(
         projectUuid,
