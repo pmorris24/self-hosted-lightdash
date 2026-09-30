@@ -191,6 +191,13 @@ export const buildChartConfig = (
 ): ChartConfig => {
     const values = getValueColumns(dataOptions);
     const legend = buildLegend(styleOptions);
+    // The legend's room, then any padding the page asks for, side by side.
+    const padding = Object.fromEntries(
+        Object.entries(styleOptions.padding ?? {})
+            .filter(([, value]) => typeof value === 'number')
+            .map(([side, value]) => [side, `${value}px`]),
+    );
+    const grid = { ...(legend?.grid ?? {}), ...padding };
 
     switch (chartType) {
         case 'bar':
@@ -250,9 +257,7 @@ export const buildChartConfig = (
                     eChartsConfig: {
                         series,
                         ...(legend ? { legend: legend.legend } : {}),
-                        ...(legend && Object.keys(legend.grid).length > 0
-                            ? { grid: legend.grid }
-                            : {}),
+                        ...(Object.keys(grid).length > 0 ? { grid } : {}),
                         ...(xAxis ? { xAxis: [axisEntry(xAxis)] } : {}),
                         ...(yAxis || rightAxis.size > 0
                             ? {

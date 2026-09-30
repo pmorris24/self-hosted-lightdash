@@ -134,6 +134,12 @@ export type DataChartStyleOptions = {
     };
     axisLabelFontSize?: number;
     axisTitleFontSize?: number;
+    /**
+     * The space between the chart's edges and its plot, in pixels, where the
+     * axis labels sit. A side left out keeps Lightdash's default, so a chart
+     * in a small tile can use all of it.
+     */
+    padding?: { top?: number; right?: number; bottom?: number; left?: number };
 };
 
 /**

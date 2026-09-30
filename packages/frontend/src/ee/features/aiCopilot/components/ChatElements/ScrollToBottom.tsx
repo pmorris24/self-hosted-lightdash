@@ -35,9 +35,18 @@ function useAutoScroll(scrollAreaRef: React.RefObject<HTMLDivElement | null>) {
             }
 
             const node = messagesEndRef.current;
-            if (!node) return;
+            const area = scrollAreaRef.current;
+            if (!node || !area) return;
+            // Scroll only the thread. scrollIntoView would also scroll every
+            // ancestor, moving the host page when the agent is embedded.
             let frame = requestAnimationFrame(() => {
-                node.scrollIntoView({ behavior });
+                area.scrollTo({
+                    top:
+                        area.scrollTop +
+                        node.getBoundingClientRect().top -
+                        area.getBoundingClientRect().top,
+                    behavior,
+                });
             });
             return () => cancelAnimationFrame(frame);
         },

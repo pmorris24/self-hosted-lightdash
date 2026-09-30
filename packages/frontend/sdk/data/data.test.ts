@@ -318,6 +318,20 @@ describe('pivotRows', () => {
 });
 
 describe('buildChartConfig style options', () => {
+    it('lays padding over the legend room, side by side', () => {
+        const config = buildChartConfig(
+            'column',
+            { category: 'method', value: ['revenue'] },
+            { legend: { position: 'right' }, padding: { top: 8, left: 0 } },
+        );
+        if (config.type !== ChartType.CARTESIAN) throw new Error('cartesian');
+        expect(config.config.eChartsConfig.grid).toEqual({
+            right: '16%',
+            top: '8px',
+            left: '0px',
+        });
+    });
+
     it('maps legend, axes and gridlines onto a cartesian chart', () => {
         const config = buildChartConfig(
             'column',
